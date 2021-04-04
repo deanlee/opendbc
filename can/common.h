@@ -54,7 +54,7 @@ private:
 
   const DBC *dbc = NULL;
   std::unordered_map<uint32_t, MessageState> message_states;
-
+  void updateCans(const std::string &data, bool sendcan);
 public:
   bool can_valid = false;
   uint64_t last_sec = 0;
@@ -63,13 +63,14 @@ public:
             const std::vector<MessageParseOptions> &options,
             const std::vector<SignalParseOptions> &sigoptions);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
-  #ifndef DYNAMIC_CAPNP
-  void update_string(const std::string &data, bool sendcan);
-  void UpdateCans(uint64_t sec, const capnp::List<cereal::CanData>::Reader& cans);
-  #endif
+#ifndef DYNAMIC_CAPNP
+  void update_string(const std::string& data, bool sendcan);
+  void update_string(const std::vector<std::string>& strings, bool sendcan);
+  std::vector<SignalValue> UpdateCans(uint64_t sec, const capnp::List<cereal::CanData>::Reader& cans);
+#endif
   void UpdateCans(uint64_t sec, const capnp::DynamicStruct::Reader& cans);
   void UpdateValid(uint64_t sec);
-  std::vector<SignalValue> query_latest();
+  // std::vector<SignalValue> query_latest();
 };
 
 class CANPacker {
