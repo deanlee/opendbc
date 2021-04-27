@@ -11,6 +11,7 @@
 can/*.so
 can/build/
 can/obj/
+can/dbc_pyx.cpp
 can/packer_pyx.cpp
 can/parser_pyx.cpp
 can/packer_pyx.html
