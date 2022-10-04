@@ -44,6 +44,11 @@ enum SignalType {
 
 struct Signal {
   std::string name;
+  std::string unit;
+  std::string comment;
+  std::string val_desc;
+  int32_t min_val;
+  int32_t max_val;
   int start_bit, msb, lsb, size;
   bool is_signed;
   double factor, offset;

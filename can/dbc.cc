@@ -18,6 +18,9 @@ std::regex sgm_regexp(R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9
 std::regex val_regexp(R"(VAL_ (\w+) (\w+) (\s*[-+]?[0-9]+\s+\".+?\"[^;]*))");
 std::regex val_split_regexp{R"([\"]+)"};  // split on "
 
+std::regex signal_comment_regexp(R"(^CM_ SG_ (\w+) (\w+) \"(.*)\";)");
+std::regex signal_comment_multi_line_re(R"(^CM_ SG_ *(\w+) *(\w+) *\"(.*)/)");
+
 #define DBC_ASSERT(condition, message)                             \
   do {                                                             \
     if (!(condition)) {                                            \
@@ -201,6 +204,10 @@ DBC* dbc_parse(const std::string& dbc_path) {
       std::copy(words.begin(), words.end(), std::ostream_iterator<std::string>(s, " "));
       val.def_val = s.str();
       val.def_val = trim(val.def_val);
+    } else if (startswith(line, "CM_ SG_")) {
+      bool ret = std::regex_search(line, match, signal_comment_regexp);
+      if (ret) {
+      }
     }
   }
 
