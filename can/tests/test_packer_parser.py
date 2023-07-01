@@ -2,6 +2,7 @@
 import os
 import unittest
 import random
+from functools import partial
 
 import cereal.messaging as messaging
 from opendbc.can.parser import CANParser
@@ -317,6 +318,12 @@ class TestCanParserPacker(unittest.TestCase):
       ts_nanos = parser.ts_nanos["POWERTRAIN_DATA"].values()
       self.assertEqual(set(ts_nanos), {0})
 
+  def test_packer_undefined_signals(self):
+    packer = CANPacker(TEST_DBC)
+    print("*********************")
+    with self.assertRaises(RuntimeError):
+      packer.make_can_msg("CAN_FD_MESSAGE", 0, {"LKAS_Output1": 1})
+    # self.assertRaises(RuntimeError, packer.make_can_msg("CAN_FD_MESSAGE1", 0, {}))
 
 if __name__ == "__main__":
   unittest.main()

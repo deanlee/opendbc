@@ -46,11 +46,11 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalP
   // set all values for all given signal/value pairs
   bool counter_set = false;
   for (const auto& sigval : signals) {
+    // printf("here %s\n", sigval.name.c_str());
     auto sig_it = signal_lookup.find(std::make_pair(address, sigval.name));
     if (sig_it == signal_lookup.end()) {
-      // TODO: do something more here. invalid flag like CANParser?
-      WARN("undefined signal %s - %d\n", sigval.name.c_str(), address);
-      continue;
+      std::string err = "undefined signal " + sigval.name +  " in " + std::to_string(address);
+      throw std::runtime_error(err);
     }
     const auto &sig = sig_it->second;
 

@@ -48,5 +48,11 @@ cdef class CANPacker:
     else:
       addr, size = self.name_to_address_and_size[name_or_addr.encode("utf8")]
 
-    cdef vector[uint8_t] val = self.pack(addr, values)
-    return [addr, 0, (<char *>&val[0])[:size], bus]
+    cdef vector[uint8_t] val
+    try:
+      val = self.pack(addr, values)
+      return [addr, 0, (<char *>&val[0])[:size], bus]
+    except  :
+      print("WOWWWWWWWWWWWWWWWWWWWWW")
+      raise
+
