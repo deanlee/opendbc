@@ -49,7 +49,15 @@ uint32_t CANPacker::addressFromName(const std::string &msg_name) {
   return msg_it->second;
 }
 
-std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalPackValue> &values) {
+std::pair<uint32_t, std::vector<uint8_t>> CANPacker::pack(const std::string &msg_name, const std::vector<SignalPackValue> &values) {
+  auto msg_it = message_name_to_address.find(msg_name);
+  if (msg_it == message_name_to_address.end()) {
+    throw std::runtime_error("CanPacker::addressFromName(): invalid message name " + msg_name);
+  }
+  return pack(msg_it->second, values);
+}
+
+std::pair<uint32_t, std::vector<uint8_t>> CANPacker::pack(uint32_t address, const std::vector<SignalPackValue> &values) {
   auto msg_it = message_lookup.find(address);
   if (msg_it == message_lookup.end()) {
     throw std::runtime_error("CanPacker::pack(): invalid address " + std::to_string(address));
@@ -101,7 +109,7 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalP
     }
   }
 
-  return ret;
+  return {address, ret};
 }
 
 // This function has a definition in common.h and is used in PlotJuggler

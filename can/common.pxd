@@ -4,6 +4,7 @@
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 from libcpp cimport bool
 from libcpp.string cimport string
+from libcpp.pair cimport pair
 from libcpp.vector cimport vector
 
 
@@ -80,4 +81,5 @@ cdef extern from "common.h":
   cdef cppclass CANPacker:
    CANPacker(string)
    uint32_t addressFromName(const string&)
-   vector[uint8_t] pack(uint32_t, vector[SignalPackValue]&)
+   pair[uint32_t, vector[uint8_t]] pack(uint32_t, const vector[SignalPackValue]&)
+   pair[uint32_t, vector[uint8_t]] pack(const string&, const vector[SignalPackValue]&)
