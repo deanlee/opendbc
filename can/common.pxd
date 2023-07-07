@@ -3,6 +3,7 @@
 
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 from libcpp cimport bool
+from libcpp.map cimport map
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 
@@ -63,11 +64,6 @@ cdef extern from "common_dbc.h":
     double value
     vector[double] all_values
 
-  cdef struct SignalPackValue:
-    string name
-    double value
-
-
 cdef extern from "common.h":
   cdef const DBC* dbc_lookup(const string)
 
@@ -79,4 +75,4 @@ cdef extern from "common.h":
 
   cdef cppclass CANPacker:
    CANPacker(string)
-   vector[uint8_t] pack(uint32_t, vector[SignalPackValue]&)
+   vector[uint8_t] pack(uint32_t, const map[string, double]&)
