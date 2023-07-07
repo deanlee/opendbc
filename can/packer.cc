@@ -1,7 +1,5 @@
 #include <cassert>
-#include <utility>
 #include <algorithm>
-#include <map>
 #include <cmath>
 
 #include "opendbc/can/common.h"
@@ -39,7 +37,6 @@ CANPacker::CANPacker(const std::string& dbc_name) {
 
 std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::map<std::string, double> &values) {
   const auto &msg = message_lookup.at(address);
-
   // set all values for all given signal/value pairs
   std::vector<uint8_t> ret(msg.size, 0);
   bool counter_set = false;
@@ -49,7 +46,6 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::map<std::strin
   for (const auto &sig : msg.sigs) {
     auto value_it = values.find(sig.name);
     double v = (value_it != values.end()) ? value_it->second : 0.0;
-
     int64_t ival = (int64_t)(round((v - sig.offset) / sig.factor));
     if (ival < 0) {
       ival = (1ULL << sig.size) + ival;
@@ -58,14 +54,12 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::map<std::strin
       set_value(ret, sig, ival);
     }
 
-    if (sig.name == "COUNTER") {
-      counter_sig = &sig;
-      if (value_it != values.end()) {
-        counter_set = true;
-        counters[address] = v;
-      }
-    } else if (sig.name == "CHECKSUM") {
+    if (sig.name == "CHECKSUM") {
       checksum_sig = &sig;
+    } else if (sig.name == "COUNTER" && value_it != values.end()) {
+      counter_sig = &sig;
+      counter_set = true;
+      counters[address] = v;
     }
   }
 
