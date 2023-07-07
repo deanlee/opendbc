@@ -37,6 +37,13 @@ CANPacker::CANPacker(const std::string& dbc_name) {
 
 std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::map<std::string, double> &values) {
   const auto &msg = message_lookup.at(address);
+  for (const auto &[name, _] : values) {
+    if (std::none_of(msg.sigs.begin(), msg.sigs.end(), [&name = name](auto &s) { return s.name == name; })) {
+      // TODO: do something more here. invalid flag like CANParser?
+      WARN("undefined signal %s - %d\n", name.c_str(), address);
+    }
+  }
+
   // set all values for all given signal/value pairs
   std::vector<uint8_t> ret(msg.size, 0);
   bool counter_set = false;
