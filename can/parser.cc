@@ -306,8 +306,9 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
     last_ts = last_sec;
   }
 
-  vals.reserve(std::accumulate(message_states.cbegin(), message_states.cend(), 0, [last_ts](int &n, const auto &s) {
-    return n + ((last_ts == 0 || s.second.last_seen_nanos < last_ts) ? s.second.parse_sigs.size() : 0);
+  vals.reserve(std::accumulate(message_states.cbegin(), message_states.cend(), 0, [last_ts](size_t n, const auto &s) {
+    size_t size = (last_ts == 0 || s.second.last_seen_nanos < last_ts) ? s.second.parse_sigs.size() : 0;
+    return n + size;
   }));
 
   for (auto &[_, state] : message_states) {
