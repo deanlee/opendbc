@@ -64,8 +64,8 @@ bool MessageState::parse(uint64_t sec, const std::vector<uint8_t> &dat) {
     }
 
     // TODO: these may get updated if the invalid or checksum gets checked later
-    vals[i] = tmp * sig.factor + sig.offset;
-    all_vals[i].push_back(vals[i]);
+    double val = tmp * sig.factor + sig.offset;
+    all_vals[i].push_back(val);
   }
   last_seen_nanos = sec;
 
@@ -137,7 +137,6 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
 
     // track all signals for this message
     state.parse_sigs = msg->sigs;
-    state.vals.resize(msg->sigs.size());
     state.all_vals.resize(msg->sigs.size());
   }
 }
@@ -161,7 +160,6 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
 
     for (const auto& sig : msg.sigs) {
       state.parse_sigs.push_back(sig);
-      state.vals.push_back(0);
       state.all_vals.push_back({});
     }
 
@@ -316,8 +314,8 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
       v.address = state.address;
       v.ts_nanos = state.last_seen_nanos;
       v.name = sig.name;
-      v.value = state.vals[i];
       v.all_values = state.all_vals[i];
+      v.value = v.all_values.empty() ? 0 : v.all_values.back();
       state.all_vals[i].clear();
     }
   }
