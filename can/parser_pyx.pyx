@@ -71,7 +71,7 @@ cdef class CANParser:
         l.clear()
 
     cdef vector[SignalValue] new_vals
-    cdef unordered_set[uint32_t] updated_addrs
+    updated_addrs = set()
 
     self.can.update_strings(strings, new_vals, sendcan)
     cdef vector[SignalValue].iterator it = new_vals.begin()
