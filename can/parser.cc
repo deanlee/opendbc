@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstring>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <sstream>
 
@@ -304,8 +305,12 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
   if (last_ts == 0) {
     last_ts = last_sec;
   }
-  for (auto& kv : message_states) {
-    auto& state = kv.second;
+
+  vals.reserve(std::accumulate(message_states.cbegin(), message_states.cend(), 0, [last_ts](int &n, const auto &s) {
+    return n + ((last_ts == 0 || s.second.last_seen_nanos < last_ts) ? s.second.parse_sigs.size() : 0);
+  }));
+
+  for (auto &[_, state] : message_states) {
     if (last_ts != 0 && state.last_seen_nanos < last_ts) {
       continue;
     }
