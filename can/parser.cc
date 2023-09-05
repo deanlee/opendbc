@@ -299,6 +299,7 @@ void CANParser::UpdateValid(uint64_t sec) {
 }
 
 void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
+  double t1 = millis_since_boot();
   if (last_ts == 0) {
     last_ts = last_sec;
   }
@@ -319,4 +320,5 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
       state.all_vals[i].clear();
     }
   }
+  printf("time is %f\n", millis_since_boot() - t1);
 }
