@@ -5,6 +5,7 @@ from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 from libcpp cimport bool
 from libcpp.pair cimport pair
 from libcpp.string cimport string
+from libcpp.unordered_map cimport unordered_map
 from libcpp.vector cimport vector
 
 
@@ -48,6 +49,8 @@ cdef extern from "common_dbc.h":
     string name
     vector[Msg] msgs
     vector[Val] vals
+    unordered_map[uint32_t, Msg*] address_to_msg
+    unordered_map[string, Msg*] name_to_msg
 
   cdef struct SignalValue:
     uint32_t address

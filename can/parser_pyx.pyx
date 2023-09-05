@@ -36,8 +36,6 @@ cdef class CANParser:
     self.vl = {}
     self.vl_all = {}
     self.ts_nanos = {}
-    msg_name_to_address = {}
-    address_to_msg_name = {}
 
     for i in range(self.dbc[0].msgs.size()):
       msg = self.dbc[0].msgs[i]
@@ -57,7 +55,7 @@ cdef class CANParser:
     cdef vector[pair[uint32_t, int]] message_v
     for i in range(len(messages)):
       c = messages[i]
-      address = c[0] if isinstance(c[0], numbers.Number) else msg_name_to_address.get(c[0])
+      address = c[0] if isinstance(c[0], numbers.Number) else self.dbcmsg_name_to_address.get(c[0])
       if address not in address_to_msg_name:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
       message_v.push_back((address, c[1]))

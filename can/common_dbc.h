@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #define ARRAYSIZE(x) (sizeof(x)/sizeof(x[0]))
 
@@ -61,6 +62,8 @@ struct DBC {
   std::string name;
   std::vector<Msg> msgs;
   std::vector<Val> vals;
+  std::unordered_map<uint32_t, Msg*> address_to_msg;
+  std::unordered_map<std::string, Msg*> name_to_msg;
 };
 
 typedef struct ChecksumState {
