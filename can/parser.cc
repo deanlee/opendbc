@@ -3,12 +3,6 @@
 #include <cstring>
 #include <limits>
 #include <stdexcept>
-#include <sstream>
-
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 
 #include "cereal/logger/logger.h"
 #include "opendbc/can/common.h"
@@ -90,9 +84,8 @@ bool MessageState::update_counter_generic(int64_t v, int cnt_size) {
   return true;
 }
 
-
-CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<std::pair<std::string, int>> &messages)
-  : bus(abus), aligned_buf(kj::heapArray<capnp::word>(1024)) {
+CANParser::CANParser(int abus, const std::string &dbc_name, const std::vector<std::pair<std::string, int>> &messages)
+    : bus(abus), aligned_buf(kj::heapArray<capnp::word>(1024)) {
   dbc = dbc_lookup(dbc_name);
   if (!dbc) {
     throw std::runtime_error("Can't find DBC: " + dbc_name);
@@ -101,16 +94,14 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
 
   bus_timeout_threshold = std::numeric_limits<uint64_t>::max();
 
-  for (const auto& [name_or_address, frequency] : messages) {
+  for (const auto &[name_or_address, frequency] : messages) {
     const Msg *msg = dbc->findMessage(name_or_address);
     if (!msg) {
       throw std::runtime_error("Could not find message " + name_or_address + " in DBC " + dbc_name);
     }
     // disallow duplicate message checks
     if (message_states.find(msg->address) != message_states.end()) {
-      std::stringstream is;
-      is << "Duplicate Message Check: " << msg->address;
-      throw std::runtime_error(is.str());
+      throw std::runtime_error("Duplicate Message Check: " + std::to_string(msg->address));
     }
 
     MessageState &state = message_states[msg->address];
@@ -128,7 +119,6 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
     state.name = msg->name;
     state.size = msg->size;
     assert(state.size <= 64);  // max signal size is 64 bytes
-
     // track all signals for this message
     state.parse_sigs = msg->sigs;
     state.vals.resize(msg->sigs.size());
