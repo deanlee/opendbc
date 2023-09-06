@@ -316,3 +316,11 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
     }
   }
 }
+
+std::map<uint32_t, const Msg*> CANParser::messages() const {
+  std::map<uint32_t, const Msg*> result;
+  for (const auto &[address, state] : message_states) {
+    result[address] = dbc->address_to_msg.at(address);
+  }
+  return result;
+}

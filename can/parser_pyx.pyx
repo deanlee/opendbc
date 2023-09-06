@@ -16,11 +16,7 @@ from collections import defaultdict
 
 
 cdef class CANParser:
-  cdef:
-    cpp_CANParser *can
-    const DBC *dbc
-    vector[SignalValue] can_values
-
+  cdef cpp_CANParser *can
   cdef readonly:
     dict vl
     dict vl_all
@@ -29,35 +25,25 @@ cdef class CANParser:
 
   def __init__(self, dbc_name, messages, bus=0):
     self.dbc_name = dbc_name
-    self.dbc = dbc_lookup(dbc_name)
-    if not self.dbc:
-      raise RuntimeError(f"Can't find DBC: {dbc_name}")
-
     self.vl = {}
     self.vl_all = {}
     self.ts_nanos = {}
-    msg_name_to_address = {}
-    address_to_msg_name = {}
 
-    for i in range(self.dbc[0].msgs.size()):
-      msg = self.dbc[0].msgs[i]
-      name = msg.name.decode("utf8")
-
-      msg_name_to_address[name] = msg.address
-      address_to_msg_name[msg.address] = name
-
-      self.vl[msg.address] = {}
-      self.vl[name] = self.vl[msg.address]
-      self.vl_all[msg.address] = {}
-      self.vl_all[name] = self.vl_all[msg.address]
-      self.ts_nanos[msg.address] = {}
-      self.ts_nanos[name] = self.ts_nanos[msg.address]
-
-    # Convert message names into addresses and check existence in DBC
     cdef vector[pair[string, int]] message_v
     for name_or_address, freq in messages:
       message_v.push_back((str(name_or_address), freq))
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
+
+    for msg in self.can.messages():
+      address = msg.first
+      name = msg.second.name.decode("utf8")
+      self.vl[address] = {}
+      self.vl[name] = self.vl[address]
+      self.vl_all[address] = {}
+      self.vl_all[name] = self.vl_all[address]
+      self.ts_nanos[address] = {}
+      self.ts_nanos[name] = self.ts_nanos[address]
+
     self.update_strings([])
 
   def update_strings(self, strings, sendcan=False):
