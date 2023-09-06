@@ -91,17 +91,36 @@ bool MessageState::update_counter_generic(int64_t v, int cnt_size) {
 }
 
 
-CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<std::pair<uint32_t, int>> &messages)
+CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<std::pair<std::string, int>> &messages)
   : bus(abus), aligned_buf(kj::heapArray<capnp::word>(1024)) {
   dbc = dbc_lookup(dbc_name);
+  if (!dbc) {
+    throw std::runtime_error("Can't find DBC: " + dbc_name);
+  }
   assert(dbc);
   init_crc_lookup_tables();
 
   bus_timeout_threshold = std::numeric_limits<uint64_t>::max();
 
-  for (const auto& [address, frequency] : messages) {
+  auto get_address = [this](const std::string &address) -> uint32_t{
+    auto name_it = dbc->name_to_msg.find(address);
+    if (name_it != dbc->name_to_msg.end()) {
+      return name_it->second->address;
+    }
+    auto address_it = dbc->address_to_msg.find(atoi(address.c_str()));
+    if (address_it != dbc->address_to_msg.end()) {
+      return address_it->second->address;
+    }
+    return -1;
+  };
+
+  for (const auto& [address_or_name, frequency] : messages) {
     // disallow duplicate message checks
-    if (message_states.find(address) != message_states.end()) { 
+    uint32_t address = get_address(address_or_name);
+    if (address == -1) {
+      throw std::runtime_error("invalid key");
+    }
+    if (message_states.find(address) != message_states.end()) {
       std::stringstream is;
       is << "Duplicate Message Check: " << address;
       throw std::runtime_error(is.str());
@@ -288,7 +307,7 @@ void CANParser::UpdateValid(uint64_t sec) {
     if (state.check_threshold > 0 && (missing || timed_out)) {
       if (show_missing && !bus_timeout) {
         if (missing) {
-          LOGE("0x%X '%s' NOT SEEN", state.address, state.name.c_str());
+          // LOGE("0x%X '%s' NOT SEEN", state.address, state.name.c_str());
         } else if (timed_out) {
           LOGE("0x%X '%s' TIMED OUT", state.address, state.name.c_str());
         }
@@ -321,4 +340,13 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
       state.all_vals[i].clear();
     }
   }
+}
+
+
+std::map<uint32_t, Msg*> CANParser::messages() const {
+  std::map<uint32_t, Msg*> result;
+  for (const auto &[address, stte] : message_states) {
+    result[address] = dbc->address_to_msg.at(address);
+  }
+  return result;
 }
