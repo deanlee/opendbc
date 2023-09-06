@@ -33,8 +33,8 @@ cdef class CANParser:
     cdef vector[pair[string, int]] message_v = messages
     for address_or_name, freq in messages:
       message_v.push_back((str(address_or_name), freq))
+    self.can = new cpp_CANParser(bus, dbc_name, message_v)
 
-    self.can = new cpp_CANParser(bus, dbc_name, messages_v)
     for it in self.can.messages():
       address = it.first
       name = it.second.name.decode("utf8")
