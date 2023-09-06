@@ -54,14 +54,9 @@ cdef class CANParser:
       self.ts_nanos[name] = self.ts_nanos[msg.address]
 
     # Convert message names into addresses and check existence in DBC
-    cdef vector[pair[uint32_t, int]] message_v
-    for i in range(len(messages)):
-      c = messages[i]
-      address = c[0] if isinstance(c[0], numbers.Number) else msg_name_to_address.get(c[0])
-      if address not in address_to_msg_name:
-        raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
-      message_v.push_back((address, c[1]))
-
+    cdef vector[pair[string, int]] message_v
+    for name_or_address, freq in messages:
+      message_v.push_back((str(name_or_address), freq))
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
     self.update_strings([])
 
