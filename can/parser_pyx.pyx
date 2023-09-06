@@ -30,7 +30,7 @@ cdef class CANParser:
     self.vl_all = {}
     self.ts_nanos = {}
 
-    cdef vector[pair[string, int]] message_v = messages
+    cdef vector[pair[string, int]] message_v
     for address_or_name, freq in messages:
       message_v.push_back((str(address_or_name), freq))
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
