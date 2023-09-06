@@ -3,11 +3,9 @@
 
 from libc.stdint cimport uint8_t
 from libcpp.vector cimport vector
-from libcpp.map cimport map
-from libcpp.string cimport string
 
 from .common cimport CANPacker as cpp_CANPacker
-from .common cimport dbc_lookup, SignalPackValue, Msg
+from .common cimport SignalPackValue
 
 
 cdef class CANPacker:
