@@ -86,7 +86,7 @@ public:
   void UpdateCans(uint64_t sec, const capnp::DynamicStruct::Reader& cans);
   void UpdateValid(uint64_t sec);
   void query_latest(std::vector<SignalValue> &vals, uint64_t last_ts = 0);
-  std::map<uint32_t, const Msg*> messages() const;
+  std::vector<Msg*> messages() const;
 };
 
 class CANPacker {

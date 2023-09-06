@@ -31,13 +31,15 @@ cdef class CANParser:
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
 
     for msg in self.can.messages():
-      address = msg.first
-      name = msg.second.name.decode("utf8")
-      self.vl[name] = self.vl[address] = {}
-      self.vl_all[name] = self.vl_all[address] = {}
-      self.ts_nanos[name] = self.ts_nanos[address] = {}
-
-    self.update_strings([])
+      name = msg.name.decode("utf8")
+      self.vl[name] = self.vl[msg.address] = {}
+      self.vl_all[name] = self.vl_all[msg.address] = {}
+      self.ts_nanos[name] = self.ts_nanos[msg.address] = {}
+      for sig in msg.sigs:
+        sig_name = sig.name.decode("utf8")
+        self.vl[msg.address][sig_name] = 0;
+        self.ts_nanos[msg.address][sig_name] = 0;
+        self.vl_all[msg.address][sig_name] = []
 
   def update_strings(self, strings, sendcan=False):
     for v in self.vl_all.values():
