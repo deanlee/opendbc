@@ -1,12 +1,9 @@
 # distutils: language = c++
 # cython: c_string_encoding=ascii, language_level=3
 
-from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.pair cimport pair
 from libcpp.string cimport string
 from libcpp.vector cimport vector
-from libcpp.unordered_set cimport unordered_set
-from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
 from .common cimport dbc_lookup, SignalValue, DBC
@@ -36,12 +33,9 @@ cdef class CANParser:
     for msg in self.can.messages():
       address = msg.first
       name = msg.second.name.decode("utf8")
-      self.vl[address] = {}
-      self.vl[name] = self.vl[address]
-      self.vl_all[address] = {}
-      self.vl_all[name] = self.vl_all[address]
-      self.ts_nanos[address] = {}
-      self.ts_nanos[name] = self.ts_nanos[address]
+      self.vl[name] = self.vl[address] = {}
+      self.vl_all[name] = self.vl_all[address] = {}
+      self.ts_nanos[name] = self.ts_nanos[address] = {}
 
     self.update_strings([])
 
@@ -51,20 +45,15 @@ cdef class CANParser:
         l.clear()
 
     cdef vector[SignalValue] new_vals
-    cdef unordered_set[uint32_t] updated_addrs
-
+    updated_addrs = set()
     self.can.update_strings(strings, new_vals, sendcan)
-    cdef vector[SignalValue].iterator it = new_vals.begin()
-    cdef SignalValue* cv
-    while it != new_vals.end():
-      cv = &deref(it)
+    for cv in new_vals:
       # Cast char * directly to unicode
       cv_name = <unicode>cv.name
       self.vl[cv.address][cv_name] = cv.value
       self.vl_all[cv.address][cv_name] = cv.all_values
       self.ts_nanos[cv.address][cv_name] = cv.ts_nanos
-      updated_addrs.insert(cv.address)
-      preinc(it)
+      updated_addrs.add(cv.address)
 
     return updated_addrs
 
