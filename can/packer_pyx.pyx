@@ -7,18 +7,13 @@ from libcpp.map cimport map
 from libcpp.string cimport string
 
 from .common cimport CANPacker as cpp_CANPacker
-from .common cimport dbc_lookup, SignalPackValue, DBC, Msg
+from .common cimport dbc_lookup, SignalPackValue, Msg
 
 
 cdef class CANPacker:
-  cdef:
-    cpp_CANPacker *packer
-    const DBC *dbc
+  cdef cpp_CANPacker *packer
 
   def __init__(self, dbc_name):
-    self.dbc = dbc_lookup(dbc_name)
-    if not self.dbc:
-      raise RuntimeError(f"Can't lookup {dbc_name}")
     self.packer = new cpp_CANPacker(dbc_name)
 
   cdef vector[uint8_t] pack(self, addr, values):
