@@ -15,8 +15,10 @@
 #include "opendbc/can/common_dbc.h"
 
 std::regex bo_regexp(R"(^BO_ (\w+) (\w+) *: (\w+) (\w+))");
+std::regex msg_comment_regexp(R"(^CM_ BO_ *(\w+) *\"([^"]*)\"\s*;)");
 std::regex sg_regexp(R"(^SG_ (\w+) : (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
 std::regex sgm_regexp(R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
+std::regex sg_comment_regexp(R"(^CM_ SG_ *(\w+) *(\w+) *\"([^"]*)\"\s*;)");
 std::regex val_regexp(R"(VAL_ (\w+) (\w+) (\s*[-+]?[0-9]+\s+\".+?\"[^;]*))");
 std::regex val_split_regexp{R"([\"]+)"};  // split on "
 
@@ -195,6 +197,26 @@ DBC* dbc_parse_from_stream(const std::string &dbc_name, std::istream &stream, Ch
       std::copy(words.begin(), words.end(), std::ostream_iterator<std::string>(s, " "));
       val.def_val = s.str();
       val.def_val = trim(val.def_val);
+    } else if (startswith(line, "CM_ BO_")) {
+      if (!line.endsWith("\";")) {
+        int pos = stream.pos() - line.length() - 1;
+        line = content.mid(pos, content.indexOf("\";", pos));
+      }
+      auto match = msg_comment_regexp.match(line);
+      dbc_assert(match.hasMatch());
+      if (auto m = (cabana::Msg*)msg(match.captured(1).toUInt())) {
+        m->comment = match.captured(2).trimmed();
+      }
+    } else if (startswith(line, "CM_ SG_ ")) {
+      if (!line.endsWith("\";")) {
+        int pos = stream.pos() - line.length() - 1;
+        line = content.mid(pos, content.indexOf("\";", pos));
+      }
+      auto match = sg_comment_regexp.match(line);
+      dbc_assert(match.hasMatch());
+      if (auto s = get_sig(match.captured(1).toUInt(), match.captured(2))) {
+        s->comment = match.captured(3).trimmed();
+      }
     }
   }
 
