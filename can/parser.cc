@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstring>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <sstream>
 
@@ -302,24 +303,30 @@ void CANParser::UpdateValid(uint64_t nanos) {
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
 }
 
-void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
+void CANParser::query_latest(std::vector<SignalValue>& vals, uint64_t last_ts) {
   if (last_ts == 0) {
     last_ts = last_nanos;
   }
-  for (auto& kv : message_states) {
-    auto& state = kv.second;
+
+  if (signal_count == -1) {
+    signal_count = std::accumulate(message_states.begin(), message_states.end(), 0,
+                                   [](int n, auto& m) { return n + m.second.parse_sigs.size(); });
+  }
+  vals.reserve(signal_count);
+
+  for (auto& [_, state] : message_states) {
     if (last_ts != 0 && state.last_seen_nanos < last_ts) {
       continue;
     }
 
-    for (int i = 0; i < state.parse_sigs.size(); i++) {
-      const Signal &sig = state.parse_sigs[i];
-      SignalValue &v = vals.emplace_back();
-      v.address = state.address;
-      v.ts_nanos = state.last_seen_nanos;
-      v.name = sig.name;
-      v.value = state.vals[i];
-      v.all_values = state.all_vals[i];
+    for (int i = 0; i < state.parse_sigs.size(); ++i) {
+      vals.emplace_back(SignalValue{
+          .address = state.address,
+          .ts_nanos = state.last_seen_nanos,
+          .name = state.parse_sigs[i].name,
+          .value = state.vals[i],
+          .all_values = state.all_vals[i]});
+
       state.all_vals[i].clear();
     }
   }
