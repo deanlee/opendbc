@@ -48,6 +48,7 @@ cdef extern from "common_dbc.h":
     string name
     vector[Msg] msgs
     vector[Val] vals
+    const Msg *findMessage(const string& name_or_addr)
 
   cdef struct SignalValue:
     uint32_t address
