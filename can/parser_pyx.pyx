@@ -10,7 +10,6 @@ from libc.stdint cimport uint32_t
 from .common cimport CANParser as cpp_CANParser
 from .common cimport dbc_lookup, SignalValue, DBC
 
-
 from collections import defaultdict
 
 

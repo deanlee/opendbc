@@ -30,9 +30,7 @@ void set_value(std::vector<uint8_t> &msg, const Signal &sig, int64_t ival) {
 
 CANPacker::CANPacker(const std::string& dbc_name) {
   dbc = dbc_lookup(dbc_name);
-  if (!dbc) {
-    throw std::runtime_error("Can't find DBC: " + dbc_name);
-  }
+  assert(dbc);
 
   for (const auto& msg : dbc->msgs) {
     for (const auto& sig : msg.sigs) {

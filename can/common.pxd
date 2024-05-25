@@ -48,7 +48,6 @@ cdef extern from "common_dbc.h":
     string name
     vector[Msg] msgs
     vector[Val] vals
-    const Msg *findMessage(const string& name_or_addr)
 
   cdef struct SignalValue:
     uint32_t address
@@ -72,5 +71,5 @@ cdef extern from "common.h":
     void update_strings(vector[string]&, vector[SignalValue]&, bool) except +
 
   cdef cppclass CANPacker:
-   CANPacker(string) except +
+   CANPacker(string)
    pair[uint32_t, vector[uint8_t]] pack(const string&, vector[SignalPackValue]&)
