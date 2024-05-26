@@ -1,25 +1,39 @@
 # distutils: language = c++
 # cython: c_string_encoding=ascii, language_level=3
 
-from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.pair cimport pair
+from libcpp.map cimport map
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport dbc_lookup, SignalValue, DBC
+from .common cimport dbc_lookup, DBC, Msg
 
 import numbers
 from collections import defaultdict
+
+
+class ValueDict(dict):
+  def __init__(self, address, func):
+    super().__init__()
+    self.address = address
+    self.func = func
+
+  def __getitem__(self, key):
+    return self.func(self.address, key)
+
+  def values(self):
+    return [self[key] for key in self]
+
+  def items(self):
+    return [(key, self[key]) for key in self]
 
 
 cdef class CANParser:
   cdef:
     cpp_CANParser *can
     const DBC *dbc
-    vector[SignalValue] can_values
-    vector[uint32_t] addresses
 
   cdef readonly:
     dict vl
@@ -37,73 +51,45 @@ cdef class CANParser:
     self.vl_all = {}
     self.ts_nanos = {}
     msg_name_to_address = {}
-    address_to_msg_name = {}
+    cdef map[uint32_t, Msg] address_to_msg
 
     for i in range(self.dbc[0].msgs.size()):
       msg = self.dbc[0].msgs[i]
       name = msg.name.decode("utf8")
-
       msg_name_to_address[name] = msg.address
-      address_to_msg_name[msg.address] = name
+      address_to_msg[msg.address] = msg
 
     # Convert message names into addresses and check existence in DBC
     cdef vector[pair[uint32_t, int]] message_v
     for i in range(len(messages)):
       c = messages[i]
       address = c[0] if isinstance(c[0], numbers.Number) else msg_name_to_address.get(c[0])
-      if address not in address_to_msg_name:
+      if address is None or address_to_msg.count(address) == 0:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
       message_v.push_back((address, c[1]))
-      self.addresses.push_back(address)
 
-      name = address_to_msg_name[address]
-      self.vl[address] = {}
+      msg = address_to_msg[address]
+      name = msg.name.decode("utf8")
+      self.vl[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).value)
       self.vl[name] = self.vl[address]
-      self.vl_all[address] = defaultdict(list)
+      self.vl_all[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).all_values)
       self.vl_all[name] = self.vl_all[address]
-      self.ts_nanos[address] = {}
+      self.ts_nanos[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).ts_nanos)
       self.ts_nanos[name] = self.ts_nanos[address]
+      for sig in msg.sigs:
+        name = sig.name.decode("utf8")
+        self.vl[address][name] = 0
+        self.vl_all[address][name] = []
+        self.ts_nanos[address][name] = 0
 
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
-    self.update_strings([])
 
   def __dealloc__(self):
     if self.can:
       del self.can
 
   def update_strings(self, strings, sendcan=False):
-    for address in self.addresses:
-      self.vl_all[address].clear()
-
-    cdef vector[SignalValue] new_vals
-    cur_address = -1
-    vl = {}
-    vl_all = {}
-    ts_nanos = {}
-    updated_addrs = set()
-
-    self.can.update_strings(strings, new_vals, sendcan)
-    cdef vector[SignalValue].iterator it = new_vals.begin()
-    cdef SignalValue* cv
-    while it != new_vals.end():
-      cv = &deref(it)
-
-      # Check if the address has changed
-      if cv.address != cur_address:
-        cur_address = cv.address
-        vl = self.vl[cur_address]
-        vl_all = self.vl_all[cur_address]
-        ts_nanos = self.ts_nanos[cur_address]
-        updated_addrs.add(cur_address)
-
-      # Cast char * directly to unicode
-      cv_name = <unicode>cv.name
-      vl[cv_name] = cv.value
-      vl_all[cv_name] = cv.all_values
-      ts_nanos[cv_name] = cv.ts_nanos
-      preinc(it)
-
-    return updated_addrs
+    return self.can.update_strings(strings, sendcan)
 
   @property
   def can_valid(self):

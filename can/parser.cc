@@ -37,7 +37,7 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
   bool checksum_failed = false;
   bool counter_failed = false;
 
-  for (int i = 0; i < parse_sigs.size(); i++) {
+  for (int i = 0; i < parse_sigs.size(); ++i) {
     const auto &sig = parse_sigs[i];
 
     int64_t tmp = get_raw_value(dat, sig);
@@ -68,9 +68,14 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
     return false;
   }
 
-  for (int i = 0; i < parse_sigs.size(); i++) {
-    vals[i] = tmp_vals[i];
-    all_vals[i].push_back(vals[i]);
+  // Update values for each signal
+  for (int i = 0; i < parse_sigs.size(); ++i) {
+    // Retrieve the value entry for the current signal
+    auto &val = values[parse_sigs[i].name];
+
+    val.value = tmp_vals[i];
+    val.ts_nanos = nanos;
+    val.all_values.push_back(val.value);
   }
   last_seen_nanos = nanos;
 
@@ -138,8 +143,9 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
 
     // track all signals for this message
     state.parse_sigs = msg->sigs;
-    state.vals.resize(msg->sigs.size());
-    state.all_vals.resize(msg->sigs.size());
+    for (auto &sig : msg->sigs) {
+      state.values[sig.name] = {};
+    }
   }
 }
 
@@ -160,27 +166,36 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
       .ignore_counter = ignore_counter,
     };
 
-    for (const auto& sig : msg.sigs) {
-      state.parse_sigs.push_back(sig);
-      state.vals.push_back(0);
-      state.all_vals.push_back({});
-    }
-
+    state.parse_sigs = msg.sigs;
     message_states[state.address] = state;
+    // Initialize value entries for each signal in the message
+    for (auto &sig : msg.sigs) {
+      message_states[state.address].values[sig.name] = {};
+    }
   }
 }
 
 #ifndef DYNAMIC_CAPNP
-void CANParser::update_string(const std::string &data, bool sendcan) {
-  // format for board, make copy due to alignment issues.
+
+// If the input data is already aligned to capnp::word boundaries,
+// a direct ArrayPtr is returned. Otherwise, a new ArrayPtr is created
+// with the data copied into it, ensuring alignment.
+kj::ArrayPtr<capnp::word> CANParser::getAlignedData(const std::string &data) {
+  bool aligned = reinterpret_cast<uintptr_t>(data.data()) % sizeof(capnp::word) == 0;
+  if (aligned) {
+    return kj::ArrayPtr<capnp::word>((capnp::word*)(data.data()), data.size() / sizeof(capnp::word));
+  }
+
   const size_t buf_size = (data.length() / sizeof(capnp::word)) + 1;
   if (aligned_buf.size() < buf_size) {
     aligned_buf = kj::heapArray<capnp::word>(buf_size);
   }
   memcpy(aligned_buf.begin(), data.data(), data.length());
+  return aligned_buf.slice(0, buf_size);
+}
 
-  // extract the messages
-  capnp::FlatArrayMessageReader cmsg(aligned_buf.slice(0, buf_size));
+void CANParser::update_string(const std::string &data, bool sendcan) {
+  capnp::FlatArrayMessageReader cmsg(getAlignedData(data));
   cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
 
   if (first_nanos == 0) {
@@ -194,7 +209,18 @@ void CANParser::update_string(const std::string &data, bool sendcan) {
   UpdateValid(last_nanos);
 }
 
-void CANParser::update_strings(const std::vector<std::string> &data, std::vector<SignalValue> &vals, bool sendcan) {
+std::vector<uint32_t> CANParser::update_strings(const std::vector<std::string> &data, bool sendcan) {
+  // Clear all_values
+  for (auto &state : message_states) {
+    for (auto &value : state.second.values) {
+      value.second.all_values.clear();
+    }
+  }
+
+  if (data.empty()) {
+    return {};
+  }
+
   uint64_t current_nanos = 0;
   for (const auto &d : data) {
     update_string(d, sendcan);
@@ -202,16 +228,16 @@ void CANParser::update_strings(const std::vector<std::string> &data, std::vector
       current_nanos = last_nanos;
     }
   }
-  query_latest(vals, current_nanos);
+  return query_latest(current_nanos);
 }
 
 void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans) {
   //DEBUG("got %d messages\n", cans.size());
-
+  std::vector<uint8_t> data;
   bool bus_empty = true;
 
   // parse the messages
-  for (const auto cmsg : cans) {
+  for (const auto &cmsg : cans) {
     if (cmsg.getSrc() != bus) {
       // DEBUG("skip %d: wrong bus\n", cmsg.getAddress());
       continue;
@@ -225,7 +251,6 @@ void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::R
     }
 
     auto dat = cmsg.getDat();
-
     if (dat.size() > 64) {
       DEBUG("got message longer than 64 bytes: 0x%X %zu\n", cmsg.getAddress(), dat.size());
       continue;
@@ -236,9 +261,7 @@ void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::R
     //  DEBUG("got message with unexpected length: expected %d, got %zu for %d", state_it->second.size, dat.size(), cmsg.getAddress());
     //  continue;
     //}
-
-    std::vector<uint8_t> data(dat.size(), 0);
-    memcpy(data.data(), dat.begin(), dat.size());
+    data.assign(dat.begin(), dat.end());
     state_it->second.parse(nanos, data);
   }
 
@@ -301,25 +324,18 @@ void CANParser::UpdateValid(uint64_t nanos) {
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
 }
 
-void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
-  if (last_ts == 0) {
-    last_ts = last_nanos;
-  }
-  for (auto& kv : message_states) {
-    auto& state = kv.second;
-    if (last_ts != 0 && state.last_seen_nanos < last_ts) {
-      continue;
+// Retrieve addresses of messages seen since the last_ts timestamp.
+std::vector<uint32_t> CANParser::query_latest(uint64_t last_ts) {
+  std::vector<uint32_t> result;
+  result.reserve(message_states.size());
+  for (const auto& [addr, state] : message_states) {
+    if (state.last_seen_nanos >= last_ts) {
+      result.push_back(addr);
     }
+  }
+  return result;
+}
 
-    for (int i = 0; i < state.parse_sigs.size(); i++) {
-      const Signal &sig = state.parse_sigs[i];
-      SignalValue &v = vals.emplace_back();
-      v.address = state.address;
-      v.ts_nanos = state.last_seen_nanos;
-      v.name = sig.name;
-      v.value = state.vals[i];
-      v.all_values = state.all_vals[i];
-      state.all_vals[i].clear();
-    }
-  }
+SignalValue &CANParser::getValue(uint32_t address, std::string &name) {
+  return message_states.at(address).values.at(name);
 }

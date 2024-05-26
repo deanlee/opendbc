@@ -43,8 +43,7 @@ public:
   unsigned int size;
 
   std::vector<Signal> parse_sigs;
-  std::vector<double> vals;
-  std::vector<std::vector<double>> all_vals;
+  std::map<std::string, SignalValue> values;
 
   uint64_t last_seen_nanos;
   uint64_t check_threshold;
@@ -66,6 +65,7 @@ private:
 
   const DBC *dbc = NULL;
   std::unordered_map<uint32_t, MessageState> message_states;
+  kj::ArrayPtr<capnp::word> getAlignedData(const std::string &data);
 
 public:
   bool can_valid = false;
@@ -79,14 +79,15 @@ public:
   CANParser(int abus, const std::string& dbc_name,
             const std::vector<std::pair<uint32_t, int>> &messages);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
+  SignalValue &getValue(uint32_t address, std::string &name);
   #ifndef DYNAMIC_CAPNP
   void update_string(const std::string &data, bool sendcan);
-  void update_strings(const std::vector<std::string> &data, std::vector<SignalValue> &vals, bool sendcan);
+  std::vector<uint32_t> update_strings(const std::vector<std::string> &data, bool sendcan);
   void UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans);
   #endif
   void UpdateCans(uint64_t nanos, const capnp::DynamicStruct::Reader& cans);
   void UpdateValid(uint64_t nanos);
-  void query_latest(std::vector<SignalValue> &vals, uint64_t last_ts = 0);
+  std::vector<uint32_t> query_latest(uint64_t last_ts = 0);
 };
 
 class CANPacker {

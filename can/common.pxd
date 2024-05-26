@@ -50,9 +50,7 @@ cdef extern from "common_dbc.h":
     vector[Val] vals
 
   cdef struct SignalValue:
-    uint32_t address
     uint64_t ts_nanos
-    string name
     double value
     vector[double] all_values
 
@@ -68,7 +66,8 @@ cdef extern from "common.h":
     bool can_valid
     bool bus_timeout
     CANParser(int, string, vector[pair[uint32_t, int]]) except +
-    void update_strings(vector[string]&, vector[SignalValue]&, bool) except +
+    SignalValue &getValue(uint32_t, string&)
+    vector[uint32_t] update_strings(vector[string]&, bool) except +
 
   cdef cppclass CANPacker:
    CANPacker(string)
