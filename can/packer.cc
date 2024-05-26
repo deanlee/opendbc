@@ -40,13 +40,8 @@ CANPacker::CANPacker(const std::string& dbc_name) {
   init_crc_lookup_tables();
 }
 
-std::pair<uint32_t, std::vector<uint8_t>> CANPacker::pack(const std::string &name_or_address, const std::vector<SignalPackValue> &signals) {
-  auto msg = dbc->findMessage(name_or_address);
-  if (!msg) {
-    throw std::runtime_error("Can't find message: " + name_or_address);
-  }
-  uint32_t address = msg->address;
-  std::vector<uint8_t> ret(msg->size, 0);
+std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalPackValue> &signals) {
+  std::vector<uint8_t> ret(message_lookup[address].size, 0);
 
   // set all values for all given signal/value pairs
   bool counter_set = false;
@@ -93,7 +88,7 @@ std::pair<uint32_t, std::vector<uint8_t>> CANPacker::pack(const std::string &nam
     }
   }
 
-  return std::make_pair(address, ret);
+  return ret;
 }
 
 // This function has a definition in common.h and is used in PlotJuggler

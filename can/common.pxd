@@ -72,4 +72,4 @@ cdef extern from "common.h":
 
   cdef cppclass CANPacker:
    CANPacker(string)
-   pair[uint32_t, vector[uint8_t]] pack(const string&, vector[SignalPackValue]&)
+   vector[uint8_t] pack(uint32_t, vector[SignalPackValue]&)

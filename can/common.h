@@ -58,7 +58,6 @@ public:
   bool update_counter_generic(int64_t v, int cnt_size);
 };
 
-
 class CANParser {
 private:
   const int bus;
@@ -97,6 +96,6 @@ private:
 
 public:
   CANPacker(const std::string& dbc_name);
-  std::pair<uint32_t, std::vector<uint8_t>> pack(const std::string &name_or_address, const std::vector<SignalPackValue> &values);
+  std::vector<uint8_t> pack(uint32_t address, const std::vector<SignalPackValue> &values);
   Msg* lookup_message(uint32_t address);
 };
