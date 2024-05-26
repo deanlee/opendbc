@@ -58,6 +58,7 @@ public:
   bool update_counter_generic(int64_t v, int cnt_size);
 };
 
+
 class CANParser {
 private:
   const int bus;
