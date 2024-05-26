@@ -59,7 +59,7 @@ struct DBC {
   std::string name;
   std::vector<Msg> msgs;
   std::vector<Val> vals;
-  std::unordered_map<uint32_t, const Msg*> address_to_msg;
+  std::unordered_map<uint32_t, const Msg*> addr_to_msg;
   std::unordered_map<std::string, const Msg*> name_to_msg;
 };
 

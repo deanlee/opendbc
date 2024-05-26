@@ -41,7 +41,7 @@ CANPacker::CANPacker(const std::string& dbc_name) {
 }
 
 std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalPackValue> &signals) {
-  std::vector<uint8_t> ret(dbc->address_to_msg.at(address)->size, 0);
+  std::vector<uint8_t> ret(dbc->addr_to_msg.at(address)->size, 0);
 
   // set all values for all given signal/value pairs
   bool counter_set = false;
@@ -93,5 +93,5 @@ std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalP
 
 // This function has a definition in common.h and is used in PlotJuggler
 Msg* CANPacker::lookup_message(uint32_t address) {
-  return (Msg*)dbc->address_to_msg.at(address);
+  return (Msg*)dbc->addr_to_msg.at(address);
 }

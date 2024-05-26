@@ -42,7 +42,7 @@ cdef class CANParser:
     for i in range(len(messages)):
       c = messages[i]
       try:
-        m = self.dbc.address_to_msg.at(c[0]) if isinstance(c[0], numbers.Number) else self.dbc.name_to_msg.at(c[0])
+        m = self.dbc.addr_to_msg.at(c[0]) if isinstance(c[0], numbers.Number) else self.dbc.name_to_msg.at(c[0])
       except IndexError:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
 
@@ -131,7 +131,7 @@ cdef class CANDefine():
       def_val = val.def_val.decode("utf8")
       address = val.address
       try:
-        m = self.dbc.address_to_msg.at(address)
+        m = self.dbc.addr_to_msg.at(address)
       except IndexError:
         raise KeyError("no address")
       msgname = m.name.decode("utf-8")

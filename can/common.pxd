@@ -49,7 +49,7 @@ cdef extern from "common_dbc.h":
     string name
     vector[Msg] msgs
     vector[Val] vals
-    unordered_map[uint32_t, const Msg*] address_to_msg
+    unordered_map[uint32_t, const Msg*] addr_to_msg
     unordered_map[string, const Msg*] name_to_msg
 
   cdef struct SignalValue:
