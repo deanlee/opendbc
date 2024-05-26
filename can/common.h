@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <unordered_map>
@@ -42,9 +43,8 @@ public:
   unsigned int size;
 
   std::vector<Signal> parse_sigs;
-  std::vector<double> vals;
-  std::vector<std::vector<double>> all_vals;
 
+  std::map<std::string, SignalValue> values;
   uint64_t last_seen_nanos;
   uint64_t check_threshold;
 
@@ -80,12 +80,13 @@ public:
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
   #ifndef DYNAMIC_CAPNP
   void update_string(const std::string &data, bool sendcan);
-  void update_strings(const std::vector<std::string> &data, std::vector<SignalValue> &vals, bool sendcan);
+  std::set<uint32_t> update_strings(const std::vector<std::string> &data, bool sendcan);
   void UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans);
+  const SignalValue &getSignalValue(uint32_t address, std::string &name);
   #endif
   void UpdateCans(uint64_t nanos, const capnp::DynamicStruct::Reader& cans);
   void UpdateValid(uint64_t nanos);
-  void query_latest(std::vector<SignalValue> &vals, uint64_t last_ts = 0);
+  std::set<uint32_t> query_latest(uint64_t last_ts = 0);
 };
 
 class CANPacker {
