@@ -5,7 +5,7 @@ from libc.stdint cimport uint8_t
 from libcpp.vector cimport vector
 
 from .common cimport CANPacker as cpp_CANPacker
-from .common cimport dbc_lookup, SignalPackValue, DBC
+from .common cimport dbc_lookup, SignalPackValue, DBC, Msg
 
 
 cdef class CANPacker:
@@ -37,12 +37,7 @@ cdef class CANPacker:
     return self.packer.pack(addr, values_thing)
 
   cpdef make_can_msg(self, name_or_addr, bus, values):
-    cdef int addr
-    if isinstance(name_or_addr, int):
-      addr = name_or_addr
-    else:
-      m = self.dbc.name_to_msg.at(name_or_addr.encode("utf8"))
-      addr = m.address
-
-    cdef vector[uint8_t] val = self.pack(addr, values)
-    return [addr, 0, (<char *>&val[0])[:val.size()], bus]
+    cdef const Msg* m = (self.dbc.address_to_msg.at(name_or_addr) if isinstance(name_or_addr, int)
+                         else self.dbc.name_to_msg.at(name_or_addr.encode("utf8")))
+    cdef vector[uint8_t] val = self.pack(m.address, values)
+    return [m.address, 0, (<char *>&val[0])[:val.size()], bus]
