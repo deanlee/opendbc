@@ -41,7 +41,7 @@ CANPacker::CANPacker(const std::string& dbc_name) {
 }
 
 std::vector<uint8_t> CANPacker::pack(uint32_t address, const std::vector<SignalPackValue> &signals) {
-  std::vector<uint8_t> ret(message_lookup[address].size, 0);
+  std::vector<uint8_t> ret(dbc->address_to_msg.at(address)->size, 0);
 
   // set all values for all given signal/value pairs
   bool counter_set = false;

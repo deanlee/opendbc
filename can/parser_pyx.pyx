@@ -10,6 +10,7 @@ from libc.stdint cimport uint32_t
 from .common cimport CANParser as cpp_CANParser
 from .common cimport dbc_lookup, SignalValue, DBC
 
+import numbers
 from collections import defaultdict
 
 
@@ -40,8 +41,9 @@ cdef class CANParser:
     cdef vector[pair[uint32_t, int]] message_v
     for i in range(len(messages)):
       c = messages[i]
-      m = self.dbc.findMessage(str(c[0]))
-      if not m:
+      try:
+        m = self.dbc.address_to_msg.at(c[0]) if isinstance(c[0], numbers.Number) else self.dbc.name_to_msg.at(c[0])
+      except IndexError:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
 
       address = m.address
@@ -128,7 +130,8 @@ cdef class CANDefine():
       sgname = val.name.decode("utf8")
       def_val = val.def_val.decode("utf8")
       address = val.address
-      msgname = self.dbc.findMessage(str(address)).name.decode("utf-8")
+      m =self.dbc.address_to_msg.at(address)
+      msgname = m.name.decode("utf-8")
 
       # separate definition/value pairs
       def_val = def_val.split()

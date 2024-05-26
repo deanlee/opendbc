@@ -12,7 +12,6 @@ cdef class CANPacker:
   cdef:
     cpp_CANPacker *packer
     const DBC *dbc
-    map[string, int] name_to_address
 
   def __init__(self, dbc_name):
     self.dbc = dbc_lookup(dbc_name)
@@ -42,7 +41,8 @@ cdef class CANPacker:
     if isinstance(name_or_addr, int):
       addr = name_or_addr
     else:
-      addr = self.dbc.name_to_msg[name_or_addr.encode("utf8")].address
+      m = self.dbc.name_to_msg.at(name_or_addr.encode("utf8"))
+      addr = m.address
 
     cdef vector[uint8_t] val = self.pack(addr, values)
     return [addr, 0, (<char *>&val[0])[:val.size()], bus]
