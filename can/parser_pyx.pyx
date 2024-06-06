@@ -73,7 +73,7 @@ cdef class CANParser:
 
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
 
-    for address, v in message_v:
+    for address, _ in message_v:
       msg = address_to_msg[address]
       name = msg.name.decode("utf8")
       names = [sig.name.decode("utf8") for sig in msg.sigs]

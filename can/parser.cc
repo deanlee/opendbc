@@ -5,11 +5,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-
 #include "opendbc/can/common.h"
 
 int64_t get_raw_value(const std::vector<uint8_t> &msg, const Signal &sig) {
@@ -30,7 +25,6 @@ int64_t get_raw_value(const std::vector<uint8_t> &msg, const Signal &sig) {
   }
   return ret;
 }
-
 
 bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
   std::vector<double> tmp_vals(parse_sigs.size());
@@ -69,9 +63,7 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
   }
 
   for (int i = 0; i < parse_sigs.size(); ++i) {
-    // Retrieve the value entry for the current signal
     auto &val = values[parse_sigs[i].name];
-
     val.value = tmp_vals[i];
     val.ts_nanos = nanos;
     val.all_values.push_back(val.value);
@@ -210,7 +202,6 @@ std::set<uint32_t> CANParser::update_strings(const std::vector<std::string> &dat
 }
 
 void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans, std::set<uint32_t> updated_addresses) {
-  //DEBUG("got %d messages\n", cans.size());
   std::vector<uint8_t> data;
   bool bus_empty = true;
 
