@@ -68,8 +68,11 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
     return false;
   }
 
+  // Update values for each signal
   for (int i = 0; i < parse_sigs.size(); ++i) {
+    // Retrieve the value entry for the current signal
     auto &val = values[parse_sigs[i].name];
+
     val.value = tmp_vals[i];
     val.ts_nanos = nanos;
     val.all_values.push_back(val.value);
@@ -165,6 +168,7 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
 
     state.parse_sigs = msg.sigs;
     message_states[state.address] = state;
+    // Initialize value entries for each signal in the message
     for (auto &sig : msg.sigs) {
       message_states[state.address].values[sig.name] = {};
     }
@@ -172,6 +176,10 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
 }
 
 #ifndef DYNAMIC_CAPNP
+
+// If the input data is already aligned to capnp::word boundaries,
+// a direct ArrayPtr is returned. Otherwise, a new ArrayPtr is created
+// with the data copied into it, ensuring alignment.
 kj::ArrayPtr<capnp::word> CANParser::getAlignedData(const std::string &data) {
   bool aligned = reinterpret_cast<uintptr_t>(data.data()) % sizeof(capnp::word) == 0;
   if (aligned) {
@@ -202,6 +210,7 @@ void CANParser::update_string(const std::string &data, bool sendcan) {
 }
 
 std::vector<uint32_t> CANParser::update_strings(const std::vector<std::string> &data, bool sendcan) {
+  // Clear all_values
   for (auto &state : message_states) {
     for (auto &value : state.second.values) {
       value.second.all_values.clear();
@@ -311,6 +320,7 @@ void CANParser::UpdateValid(uint64_t nanos) {
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
 }
 
+// Retrieve addresses of messages seen since the last_ts timestamp.
 std::vector<uint32_t> CANParser::query_latest(uint64_t last_ts) {
   std::vector<uint32_t> result;
   result.reserve(message_states.size());
