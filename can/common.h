@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <unordered_map>
@@ -81,13 +82,11 @@ public:
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
   SignalValue &getValue(uint32_t address, std::string &name);
   #ifndef DYNAMIC_CAPNP
-  void update_string(const std::string &data, bool sendcan);
-  std::vector<uint32_t> update_strings(const std::vector<std::string> &data, bool sendcan);
-  void UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans);
+  std::set<uint32_t> update_strings(const std::vector<std::string> &data, bool sendcan);
+  void UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans, std::set<uint32_t> updated_addresses);
   #endif
   void UpdateCans(uint64_t nanos, const capnp::DynamicStruct::Reader& cans);
   void UpdateValid(uint64_t nanos);
-  std::vector<uint32_t> query_latest(uint64_t last_ts = 0);
 };
 
 class CANPacker {

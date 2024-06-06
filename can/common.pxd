@@ -4,6 +4,7 @@
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 from libcpp cimport bool
 from libcpp.pair cimport pair
+from libcpp.set cimport set
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 
@@ -67,7 +68,7 @@ cdef extern from "common.h":
     bool bus_timeout
     CANParser(int, string, vector[pair[uint32_t, int]]) except +
     SignalValue &getValue(uint32_t, string&)
-    vector[uint32_t] update_strings(vector[string]&, bool) except +
+    set[uint32_t] update_strings(vector[string]&, bool) except +
 
   cdef cppclass CANPacker:
    CANPacker(string)

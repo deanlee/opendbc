@@ -68,7 +68,6 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
     return false;
   }
 
-  // Update values for each signal
   for (int i = 0; i < parse_sigs.size(); ++i) {
     // Retrieve the value entry for the current signal
     auto &val = values[parse_sigs[i].name];
@@ -176,30 +175,16 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
 }
 
 #ifndef DYNAMIC_CAPNP
-void CANParser::update_string(const std::string &data, bool sendcan) {
-  // format for board, make copy due to alignment issues.
+ kj::ArrayPtr<capnp::word> CANParser::getAlignedData(const std::string &data) {
   const size_t buf_size = (data.length() / sizeof(capnp::word)) + 1;
   if (aligned_buf.size() < buf_size) {
     aligned_buf = kj::heapArray<capnp::word>(buf_size);
   }
   memcpy(aligned_buf.begin(), data.data(), data.length());
-
-  // extract the messages
-  capnp::FlatArrayMessageReader cmsg(aligned_buf.slice(0, buf_size));
-  cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
-
-  if (first_nanos == 0) {
-    first_nanos = event.getLogMonoTime();
-  }
-  last_nanos = event.getLogMonoTime();
-
-  auto cans = sendcan ? event.getSendcan() : event.getCan();
-  UpdateCans(last_nanos, cans);
-
-  UpdateValid(last_nanos);
+  return aligned_buf.slice(0, buf_size);
 }
 
-std::vector<uint32_t> CANParser::update_strings(const std::vector<std::string> &data, bool sendcan) {
+std::set<uint32_t> CANParser::update_strings(const std::vector<std::string> &data, bool sendcan) {
   // Clear all_values
   for (auto &state : message_states) {
     for (auto &value : state.second.values) {
@@ -207,27 +192,30 @@ std::vector<uint32_t> CANParser::update_strings(const std::vector<std::string> &
     }
   }
 
-  if (data.empty()) {
-    return {};
-  }
-
-  uint64_t current_nanos = 0;
+  std::set<uint32_t> updated_addresses;
   for (const auto &d : data) {
-    update_string(d, sendcan);
-    if (current_nanos == 0) {
-      current_nanos = last_nanos;
+    capnp::FlatArrayMessageReader cmsg(getAlignedData(d));
+    cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
+
+    if (first_nanos == 0) {
+      first_nanos = event.getLogMonoTime();
     }
+    last_nanos = event.getLogMonoTime();
+
+    auto cans = sendcan ? event.getSendcan() : event.getCan();
+    UpdateCans(last_nanos, cans, updated_addresses);
+    UpdateValid(last_nanos);
   }
-  return query_latest(current_nanos);
+  return updated_addresses;
 }
 
-void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans) {
+void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::Reader& cans, std::set<uint32_t> updated_addresses) {
   //DEBUG("got %d messages\n", cans.size());
   std::vector<uint8_t> data;
   bool bus_empty = true;
 
   // parse the messages
-  for (const auto &cmsg : cans) {
+  for (const auto cmsg : cans) {
     if (cmsg.getSrc() != bus) {
       // DEBUG("skip %d: wrong bus\n", cmsg.getAddress());
       continue;
@@ -252,7 +240,9 @@ void CANParser::UpdateCans(uint64_t nanos, const capnp::List<cereal::CanData>::R
     //  continue;
     //}
     data.assign(dat.begin(), dat.end());
-    state_it->second.parse(nanos, data);
+    if (state_it->second.parse(nanos, data)) {
+      updated_addresses.insert(state_it->first);
+    }
   }
 
   // update bus timeout
@@ -312,17 +302,6 @@ void CANParser::UpdateValid(uint64_t nanos) {
   }
   can_invalid_cnt = _valid ? 0 : (can_invalid_cnt + 1);
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
-}
-
-std::vector<uint32_t> CANParser::query_latest(uint64_t last_ts) {
-  std::vector<uint32_t> result;
-  result.reserve(message_states.size());
-  for (const auto& [addr, state] : message_states) {
-    if (state.last_seen_nanos >= last_ts) {
-      result.push_back(addr);
-    }
-  }
-  return result;
 }
 
 SignalValue &CANParser::getValue(uint32_t address, std::string &name) {
