@@ -12,22 +12,25 @@ from .common cimport dbc_lookup, DBC, Msg
 
 import numbers
 from collections import defaultdict
+from collections.abc import Mapping
 
 
-class ValueDict(dict):
-  def __init__(self, address, func):
-    super().__init__()
-    self.address = address
-    self.func = func
+class ValueDict(Mapping):
+  def __init__(self, signal_names, get_value_func):
+    self.signal_names = signal_names
+    self.get_value_func = get_value_func
 
   def __getitem__(self, key):
-    return self.func(self.address, key)
+    return self.get_value_func(key)
 
-  def values(self):
-    return [self[key] for key in self]
+  def __iter__(self):
+    return iter(self.signal_names)
 
-  def items(self):
-    return [(key, self[key]) for key in self]
+  def __len__(self):
+    return len(self.signal_names)
+
+  def __repr__(self):
+    return repr(dict(self.items()))
 
 
 cdef class CANParser:
@@ -68,21 +71,20 @@ cdef class CANParser:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
       message_v.push_back((address, c[1]))
 
+    self.can = new cpp_CANParser(bus, dbc_name, message_v)
+
+    for address, v in message_v:
       msg = address_to_msg[address]
       name = msg.name.decode("utf8")
-      self.vl[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).value)
-      self.vl[name] = self.vl[address]
-      self.vl_all[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).all_values)
-      self.vl_all[name] = self.vl_all[address]
-      self.ts_nanos[address] = ValueDict(address, lambda addr, name: self.can.getValue(addr, name).ts_nanos)
-      self.ts_nanos[name] = self.ts_nanos[address]
-      for sig in msg.sigs:
-        name = sig.name.decode("utf8")
-        self.vl[address][name] = 0
-        self.vl_all[address][name] = []
-        self.ts_nanos[address][name] = 0
+      names = [sig.name.decode("utf8") for sig in msg.sigs]
 
-    self.can = new cpp_CANParser(bus, dbc_name, message_v)
+      self.vl[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).value)
+      self.vl_all[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).all_values)
+      self.ts_nanos[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).ts_nanos)
+
+      self.vl[name] = self.vl[address]
+      self.vl_all[name] = self.vl_all[address]
+      self.ts_nanos[name] = self.ts_nanos[address]
 
   def __dealloc__(self):
     if self.can:
