@@ -31,6 +31,19 @@ int64_t get_raw_value(const std::vector<uint8_t> &msg, const Signal &sig) {
   return ret;
 }
 
+MessageState::MessageState(const Msg &msg, int frequency) {
+  if (frequency > 0) {
+    check_threshold = (1000000000ULL / frequency) * 10;
+  }
+
+  name = msg.name;
+  size = msg.size;
+  assert(size <= 64);  // max signal size is 64 bytes
+
+  parse_sigs = msg.sigs;
+  vals.resize(msg.sigs.size());
+  all_vals.resize(msg.sigs.size());
+}
 
 bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
   std::vector<double> tmp_vals(parse_sigs.size());
@@ -108,18 +121,6 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
       throw std::runtime_error(is.str());
     }
 
-    MessageState &state = message_states[address];
-    state.address = address;
-    // state.check_frequency = op.check_frequency,
-
-    // msg is not valid if a message isn't received for 10 consecutive steps
-    if (frequency > 0) {
-      state.check_threshold = (1000000000ULL / frequency) * 10;
-
-      // bus timeout threshold should be 10x the fastest msg
-      bus_timeout_threshold = std::min(bus_timeout_threshold, state.check_threshold);
-    }
-
     const Msg* msg = NULL;
     for (const auto& m : dbc->msgs) {
       if (m.address == address) {
@@ -132,14 +133,7 @@ CANParser::CANParser(int abus, const std::string& dbc_name, const std::vector<st
       assert(false);
     }
 
-    state.name = msg->name;
-    state.size = msg->size;
-    assert(state.size <= 64);  // max signal size is 64 bytes
-
-    // track all signals for this message
-    state.parse_sigs = msg->sigs;
-    state.vals.resize(msg->sigs.size());
-    state.all_vals.resize(msg->sigs.size());
+    message_states.emplace(*msg, frequency);
   }
 }
 
@@ -152,21 +146,6 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
   init_crc_lookup_tables();
 
   for (const auto& msg : dbc->msgs) {
-    MessageState state = {
-      .name = msg.name,
-      .address = msg.address,
-      .size = msg.size,
-      .ignore_checksum = ignore_checksum,
-      .ignore_counter = ignore_counter,
-    };
-
-    for (const auto& sig : msg.sigs) {
-      state.parse_sigs.push_back(sig);
-      state.vals.push_back(0);
-      state.all_vals.push_back({});
-    }
-
-    message_states[state.address] = state;
   }
 }
 
