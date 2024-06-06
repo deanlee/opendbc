@@ -176,26 +176,16 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
 }
 
 #ifndef DYNAMIC_CAPNP
-
-// If the input data is already aligned to capnp::word boundaries,
-// a direct ArrayPtr is returned. Otherwise, a new ArrayPtr is created
-// with the data copied into it, ensuring alignment.
-kj::ArrayPtr<capnp::word> CANParser::getAlignedData(const std::string &data) {
-  bool aligned = reinterpret_cast<uintptr_t>(data.data()) % sizeof(capnp::word) == 0;
-  if (aligned) {
-    return kj::ArrayPtr<capnp::word>((capnp::word*)(data.data()), data.size() / sizeof(capnp::word));
-  }
-
+void CANParser::update_string(const std::string &data, bool sendcan) {
+  // format for board, make copy due to alignment issues.
   const size_t buf_size = (data.length() / sizeof(capnp::word)) + 1;
   if (aligned_buf.size() < buf_size) {
     aligned_buf = kj::heapArray<capnp::word>(buf_size);
   }
   memcpy(aligned_buf.begin(), data.data(), data.length());
-  return aligned_buf.slice(0, buf_size);
-}
 
-void CANParser::update_string(const std::string &data, bool sendcan) {
-  capnp::FlatArrayMessageReader cmsg(getAlignedData(data));
+  // extract the messages
+  capnp::FlatArrayMessageReader cmsg(aligned_buf.slice(0, buf_size));
   cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
 
   if (first_nanos == 0) {
@@ -324,7 +314,6 @@ void CANParser::UpdateValid(uint64_t nanos) {
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
 }
 
-// Retrieve addresses of messages seen since the last_ts timestamp.
 std::vector<uint32_t> CANParser::query_latest(uint64_t last_ts) {
   std::vector<uint32_t> result;
   result.reserve(message_states.size());
