@@ -8,20 +8,29 @@ from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport dbc_lookup, DBC, Msg
+from .common cimport dbc_lookup, DBC, Msg, MessageState
 
 import numbers
 from collections import defaultdict
 from collections.abc import Mapping
 
+cdef class SignalState:
+  cdef const MessageState *state
 
-class ValueDict(Mapping):
-  def __init__(self, signal_names, get_value_func):
+  def value(self, name):
+    return self.state.values.at(name).value
+
+  def all_values(self, name):
+    return self.state.values.at(name).all_values
+
+  def ts_nanos(self, name):
+    return self.state.values.at(name).ts_nanos
+
+
+class ValueDictBase(Mapping):
+  def __init__(self, signal_names, state):
     self.signal_names = signal_names
-    self.get_value_func = get_value_func
-
-  def __getitem__(self, key):
-    return self.get_value_func(key)
+    self.state = state
 
   def __iter__(self):
     return iter(self.signal_names)
@@ -31,6 +40,21 @@ class ValueDict(Mapping):
 
   def __repr__(self):
     return repr(dict(self.items()))
+
+
+class ValueDict(ValueDictBase):
+  def __getitem__(self, key):
+    return self.state.value(key)
+
+
+class AllValueDict(ValueDictBase):
+  def __getitem__(self, key):
+    return self.state.all_values(key)
+
+
+class NonosDict(ValueDictBase):
+  def __getitem__(self, key):
+    return self.state.ts_nanos(key)
 
 
 cdef class CANParser:
@@ -77,14 +101,11 @@ cdef class CANParser:
       msg = address_to_msg[address]
       name = msg.name.decode("utf8")
       names = [sig.name.decode("utf8") for sig in msg.sigs]
-
-      self.vl[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).value)
-      self.vl_all[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).all_values)
-      self.ts_nanos[address] = ValueDict(names, lambda name, addr=address: self.can.getValue(addr, name).ts_nanos)
-
-      self.vl[name] = self.vl[address]
-      self.vl_all[name] = self.vl_all[address]
-      self.ts_nanos[name] = self.ts_nanos[address]
+      state = SignalState()
+      state.state = self.can.messageState(address)
+      self.vl[name] = self.vl[address] = ValueDict(names, state)
+      self.vl_all[name] = self.vl_all[address] = AllValueDict(names, state)
+      self.ts_nanos[name] = self.ts_nanos[address] = NonosDict(names, state)
 
   def __dealloc__(self):
     if self.can:
