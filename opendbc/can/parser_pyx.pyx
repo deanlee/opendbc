@@ -31,10 +31,6 @@ cdef class CANParser:
     if not self.dbc:
       raise RuntimeError(f"Can't find DBC: {dbc_name}")
 
-    self.vl = {}
-    self.vl_all = {}
-    self.ts_nanos = {}
-
     # Convert message names into addresses and check existence in DBC
     cdef vector[pair[uint32_t, int]] message_v
     cdef set[uint32_t] addresses
