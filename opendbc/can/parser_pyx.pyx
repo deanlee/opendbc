@@ -6,10 +6,10 @@ from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
 from libcpp.map cimport map
-from libcpp.unordered_map cimport unordered_map
+from libcpp.set cimport set
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport dbc_lookup, DBC, CanData, CanFrame, MessageState, SignalValue
+from .common cimport dbc_lookup, DBC, CanData, CanFrame, SignalValue
 
 import numbers
 from collections import defaultdict
@@ -37,22 +37,24 @@ cdef class CANParser:
 
     # Convert message names into addresses and check existence in DBC
     cdef vector[pair[uint32_t, int]] message_v
+    cdef set[uint32_t] addresses
+
     for i in range(len(messages)):
       c = messages[i]
       try:
         m = self.dbc.addr_to_msg.at(c[0]) if isinstance(c[0], numbers.Number) else self.dbc.name_to_msg.at(c[0])
+        addresses.insert(m.address)
+        message_v.push_back((m.address, c[1]))
       except IndexError:
         raise RuntimeError(f"could not find message {repr(c[0])} in DBC {self.dbc_name}")
-
-      message_v.push_back((m.address, c[1]))
 
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
 
     # Populate value dictionaries
-    self._update()
-    for address, _ in message_v:
-      m = self.dbc.addr_to_msg.at(address)
-      name = m.name.decode("utf8")
+    self._update(addresses)
+    # map name to address
+    for address in addresses:
+      name = self.dbc.addr_to_msg.at(address).name.decode("utf8")
       self.vl[name] = self.vl[address]
       self.vl_all[name] = self.vl_all[address]
       self.ts_nanos[name] = self.ts_nanos[address]
@@ -88,30 +90,24 @@ cdef class CANParser:
       raise RuntimeError("invalid parameter")
 
     update_addresses = self.can.update(can_data_array, sendcan)
-    self._update()
+    self._update(update_addresses)
     return update_addresses
 
-  cdef _update(self):
-    cdef unordered_map[uint32_t, MessageState].iterator state_it
+  cdef _update(self, set[uint32_t] &addresses):
     cdef map[string, SignalValue].iterator val_it
-
-    state_it = self.can.message_states.begin()
-    while state_it != self.can.message_states.end():
-      address = deref(state_it).first
+    for address in addresses:
       vl = self.vl.setdefault(address, {})
       vl_all = self.vl_all.setdefault(address, {})
       ts_nanos = self.ts_nanos.setdefault(address, {})
-
-      val_it = deref(state_it).second.values.begin()
-      while val_it != deref(state_it).second.values.end():
+      state = &(self.can.message_states.at(address).values)
+      val_it = state.begin()
+      while val_it != state.end():
         name = <unicode>deref(val_it).first
         value = &deref(val_it).second
         vl[name] = value.value
         vl_all[name] = value.all_values
         ts_nanos[name] = value.ts_nanos
         preinc(val_it)
-
-      preinc(state_it)
 
   @property
   def can_valid(self):
