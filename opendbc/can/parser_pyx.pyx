@@ -1,13 +1,15 @@
 # distutils: language = c++
 # cython: c_string_encoding=ascii, language_level=3
-
+from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.pair cimport pair
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
+from libcpp.map cimport map
+from libcpp.unordered_map cimport unordered_map
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport dbc_lookup, DBC, CanData, CanFrame
+from .common cimport dbc_lookup, DBC, CanData, CanFrame, MessageState, SignalValue
 
 import numbers
 from collections import defaultdict
@@ -90,16 +92,26 @@ cdef class CANParser:
     return update_addresses
 
   cdef _update(self):
-    for state in self.can.message_states:
-      address = state.first
+    cdef unordered_map[uint32_t, MessageState].iterator state_it
+    cdef map[string, SignalValue].iterator val_it
+
+    state_it = self.can.message_states.begin()
+    while state_it != self.can.message_states.end():
+      address = deref(state_it).first
       vl = self.vl.setdefault(address, {})
       vl_all = self.vl_all.setdefault(address, {})
       ts_nanos = self.ts_nanos.setdefault(address, {})
-      for v in state.second.values:
-        name = <unicode>v.first
-        vl[name] = v.second.value
-        vl_all[name] = v.second.all_values
-        ts_nanos[name] = v.second.ts_nanos
+
+      val_it = deref(state_it).second.values.begin()
+      while val_it != deref(state_it).second.values.end():
+        name = <unicode>deref(val_it).first
+        value = &deref(val_it).second
+        vl[name] = value.value
+        vl_all[name] = value.all_values
+        ts_nanos[name] = value.ts_nanos
+        preinc(val_it)
+
+      preinc(state_it)
 
   @property
   def can_valid(self):
