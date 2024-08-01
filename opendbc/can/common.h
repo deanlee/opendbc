@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <unordered_map>
+#include <set>
 #include <vector>
 
 #include "opendbc/can/logger.h"
@@ -77,7 +78,7 @@ public:
             const std::vector<std::pair<uint32_t, int>> &messages);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
   void update(const std::vector<CanData> &can_data, std::vector<SignalValue> &vals);
-  void query_latest(std::vector<SignalValue> &vals, uint64_t last_ts = 0);
+  void queryUpdated(std::vector<SignalValue> &vals, const std::set<uint32_t> &addresses);
 
 protected:
   void UpdateCans(const CanData &can);
