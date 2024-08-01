@@ -47,6 +47,7 @@ public:
   std::vector<Signal> parse_sigs;
   std::vector<double> vals;
   std::vector<std::vector<double>> all_vals;
+  std::vector<std::map<uint64_t, double>> time_value_map;
 
   uint64_t last_seen_nanos;
   uint64_t check_threshold;
@@ -57,6 +58,7 @@ public:
   bool ignore_checksum = false;
   bool ignore_counter = false;
 
+  MessageState(const Msg *msg, int frequency = 0, bool ignore_checksum = false, bool ignore_counter = false);
   bool parse(uint64_t nanos, const std::vector<uint8_t> &dat);
   bool update_counter_generic(int64_t v, int cnt_size);
 };
