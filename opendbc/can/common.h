@@ -42,7 +42,7 @@ class MessageState {
 public:
   Msg msg;
   std::vector<double> vals;
-  std::vector<std::vector<double>> all_vals;
+  std::vector<std::map<uint64_t, double>> all_values;
 
   uint64_t last_seen_nanos = 0;
   uint64_t check_threshold = 0;

@@ -30,7 +30,7 @@ MessageState::MessageState(const Msg *msg_ptr, uint64_t check_threshold, bool ig
     : msg(*msg_ptr), check_threshold(check_threshold), ignore_checksum(ignore_checksum), ignore_counter(ignore_counter) {
   assert(msg.size <= 64 && "The maximum message size is 64 bytes");
   vals.resize(msg.sigs.size());
-  all_vals.resize(msg.sigs.size());
+  all_values.resize(msg.sigs.size());
 }
 
 bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
@@ -71,9 +71,9 @@ bool MessageState::parse(uint64_t nanos, const std::vector<uint8_t> &dat) {
 
   for (int i = 0; i < msg.sigs.size(); ++i) {
     vals[i] = tmp_vals[i];
-    all_vals[i].push_back(vals[i]);
+    all_values[i][nanos] = tmp_vals[i];
   }
-  last_seen_nanos = nanos;
+  last_seen_nanos = std::max(last_seen_nanos, nanos);
 
   return true;
 }
@@ -133,7 +133,7 @@ void CANParser::update(const std::vector<CanData> &can_data, std::vector<SignalV
     if (current_nanos == 0) {
       current_nanos = c.nanos;
     }
-    last_nanos = c.nanos;
+    last_nanos = std::max(last_nanos, c.nanos);
 
     UpdateCans(c);
     UpdateValid(last_nanos);
@@ -218,15 +218,22 @@ void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
       continue;
     }
 
+    std::vector<double> all_values;
     for (int i = 0; i < state.msg.sigs.size(); ++i) {
       const Signal &sig = state.msg.sigs[i];
+
+      all_values.clear();
+      for (auto &[_, v] : state.all_values[i]) {
+        all_values.push_back(v);
+      }
+
       SignalValue &v = vals.emplace_back();
       v.address = state.msg.address;
       v.ts_nanos = state.last_seen_nanos;
       v.name = sig.name;
       v.value = state.vals[i];
-      v.all_values = state.all_vals[i];
-      state.all_vals[i].clear();
+      v.all_values = all_values;
+      state.all_values[i].clear();
     }
   }
 }
