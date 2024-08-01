@@ -50,7 +50,8 @@ cdef class CANParser:
     self._update(addresses)
     # map name to address
     for address in addresses:
-      name = self.dbc.addr_to_msg.at(address).name.decode("utf8")
+      m = self.dbc.addr_to_msg.at(address)
+      name = <unicode>m.name
       self.vl[name] = self.vl[address]
       self.vl_all[name] = self.vl_all[address]
       self.ts_nanos[name] = self.ts_nanos[address]
