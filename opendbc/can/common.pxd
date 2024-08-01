@@ -52,13 +52,6 @@ cdef extern from "common_dbc.h":
     unordered_map[uint32_t, const Msg*] addr_to_msg
     unordered_map[string, const Msg*] name_to_msg
 
-  cdef struct SignalValue:
-    uint32_t address
-    uint64_t ts_nanos
-    string name
-    double value
-    vector[double] all_values
-
   cdef struct SignalPackValue:
     string name
     double value
@@ -80,7 +73,7 @@ cdef extern from "common.h":
     bool can_valid
     bool bus_timeout
     CANParser(int, string, vector[pair[uint32_t, int]]) except +
-    void update(vector[CanData]&, vector[SignalValue]&) except +
+    void update(vector[CanData]&) except +
 
   cdef cppclass CANPacker:
    CANPacker(string)

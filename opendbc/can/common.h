@@ -79,8 +79,7 @@ public:
   CANParser(int abus, const std::string& dbc_name,
             const std::vector<std::pair<uint32_t, int>> &messages);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
-  void update(const std::vector<CanData> &can_data, std::vector<SignalValue> &vals);
-  void query_latest(std::vector<SignalValue> &vals, uint64_t last_ts = 0);
+  void update(const std::vector<CanData> &can_data);
 
 protected:
   void UpdateCans(const CanData &can);

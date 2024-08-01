@@ -157,7 +157,7 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
   }
 }
 
-void CANParser::update(const std::vector<CanData> &can_data, std::vector<SignalValue> &vals) {
+void CANParser::update(const std::vector<CanData> &can_data) {
   uint64_t current_nanos = 0;
   for (const auto &c : can_data) {
     if (first_nanos == 0) {
@@ -239,27 +239,4 @@ void CANParser::UpdateValid(uint64_t nanos) {
   }
   can_invalid_cnt = _valid ? 0 : (can_invalid_cnt + 1);
   can_valid = (can_invalid_cnt < CAN_INVALID_CNT) && _counters_valid;
-}
-
-void CANParser::query_latest(std::vector<SignalValue> &vals, uint64_t last_ts) {
-  if (last_ts == 0) {
-    last_ts = last_nanos;
-  }
-  for (auto& kv : message_states) {
-    auto& state = kv.second;
-    if (last_ts != 0 && state.last_seen_nanos < last_ts) {
-      continue;
-    }
-
-    for (int i = 0; i < state.parse_sigs.size(); i++) {
-      const Signal &sig = state.parse_sigs[i];
-      SignalValue &v = vals.emplace_back();
-      v.address = state.address;
-      v.ts_nanos = state.last_seen_nanos;
-      v.name = sig.name;
-      v.value = state.vals[i];
-      v.all_values = state.all_vals[i];
-      state.all_vals[i].clear();
-    }
-  }
 }
