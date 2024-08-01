@@ -82,8 +82,8 @@ cdef extern from "common.h":
   cdef cppclass CANParser:
     bool can_valid
     bool bus_timeout
+    unordered_map[uint32_t, MessageState] message_states
     CANParser(int, string, vector[pair[uint32_t, int]]) except +
-    MessageState *messageState(uint32_t address)
     set[uint32_t] update(vector[CanData]&, bool) except +
 
   cdef cppclass CANPacker:

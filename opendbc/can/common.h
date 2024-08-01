@@ -65,7 +65,6 @@ class CANParser {
 private:
   const int bus;
   const DBC *dbc = NULL;
-  std::unordered_map<uint32_t, MessageState> message_states;
 
 public:
   bool can_valid = false;
@@ -75,11 +74,11 @@ public:
   uint64_t last_nonempty_nanos = 0;
   uint64_t bus_timeout_threshold = 0;
   uint64_t can_invalid_cnt = CAN_INVALID_CNT;
+  std::unordered_map<uint32_t, MessageState> message_states;
 
   CANParser(int abus, const std::string& dbc_name,
             const std::vector<std::pair<uint32_t, int>> &messages);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
-  MessageState *messageState(uint32_t address) { return &message_states.at(address); }
   std::set<uint32_t> update(const std::vector<CanData> &can_data, bool sendcan);
 
 protected:

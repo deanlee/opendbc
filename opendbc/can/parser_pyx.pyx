@@ -7,52 +7,10 @@ from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport MessageState as cpp_MessageState
 from .common cimport dbc_lookup, DBC, CanData, CanFrame
 
 import numbers
 from collections import defaultdict
-from collections.abc import Mapping
-
-cdef class MessageState:
-  cdef cpp_MessageState *state
-  cdef list signal_names
-
-  @property
-  def names(self):
-    return self.signal_names
-
-  def value(self, name):
-    return self.state.values.at(name).value
-
-  def all_values(self, name):
-    return self.state.values.at(name).all_values
-
-  def ts_nanos(self, name):
-    return self.state.values.at(name).ts_nanos
-
-  @staticmethod
-  cdef create(cpp_MessageState *s):
-    state = MessageState()
-    state.state = s
-    state.signal_names = [it.first.decode("utf-8") for it in s.values]
-    return state
-
-
-class ValueDict(Mapping):
-  def __init__(self, MessageState state, fetch_func):
-    self.state = state
-    self.fetch_func = fetch_func
-
-  def __getitem__(self, key):
-    return self.fetch_func(self.state, key)
-
-  def __iter__(self):
-    return iter(self.state.names)
-
-  def __len__(self):
-    return len(self.state.names)
-
 
 cdef class CANParser:
   cdef:
@@ -88,14 +46,14 @@ cdef class CANParser:
 
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
 
-    # Populate dictionaries with ValueDict
+    # Populate value dictionaries
+    self._update()
     for address, _ in message_v:
       m = self.dbc.addr_to_msg.at(address)
       name = m.name.decode("utf8")
-      state = MessageState.create(self.can.messageState(address))
-      self.vl[name] = self.vl[address] = ValueDict(state, MessageState.value)
-      self.vl_all[name] = self.vl_all[address] = ValueDict(state, MessageState.all_values)
-      self.ts_nanos[name] = self.ts_nanos[address] = ValueDict(state, MessageState.ts_nanos)
+      self.vl[name] = self.vl[address]
+      self.vl_all[name] = self.vl_all[address]
+      self.ts_nanos[name] = self.ts_nanos[address]
 
   def __dealloc__(self):
     if self.can:
@@ -127,7 +85,21 @@ cdef class CANParser:
     except TypeError:
       raise RuntimeError("invalid parameter")
 
-    return self.can.update(can_data_array, sendcan)
+    update_addresses = self.can.update(can_data_array, sendcan)
+    self._update()
+    return update_addresses
+
+  cdef _update(self):
+    for state in self.can.message_states:
+      address = state.first
+      vl = self.vl.setdefault(address, {})
+      vl_all = self.vl_all.setdefault(address, {})
+      ts_nanos = self.ts_nanos.setdefault(address, {})
+      for v in state.second.values:
+        name = <unicode>v.first
+        vl[name] = v.second.value
+        vl_all[name] = v.second.all_values
+        ts_nanos[name] = v.second.ts_nanos
 
   @property
   def can_valid(self):
