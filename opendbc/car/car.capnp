@@ -1,5 +1,5 @@
-using Cxx = import "./include/c++.capnp";
-$Cxx.namespace("cereal");
+using Cxx = import "/capnp/c++.capnp";
+$Cxx.namespace("car");
 
 @0x8e2af1e708af8b8d;
 
