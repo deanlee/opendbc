@@ -1,7 +1,7 @@
+@0xe423c3314272fe2e;
+
 using Cxx = import "./c++.capnp";
 $Cxx.namespace("car");
-
-@0xe423c3314272fe2e;
 
 # ******* events causing controls state machine transition *******
 
