@@ -1,7 +1,7 @@
 using Cxx = import "./c++.capnp";
 $Cxx.namespace("car");
 
-@0x8e2af1e708af8bd;
+@0xe423c3314272fe2e;
 
 # ******* events causing controls state machine transition *******
 
