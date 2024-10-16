@@ -5,6 +5,7 @@ from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.pair cimport pair
 from libcpp.string cimport string
 from libcpp.vector cimport vector
+from libcpp.set cimport set as cpp_set
 from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
@@ -18,7 +19,7 @@ cdef class CANParser:
   cdef:
     cpp_CANParser *can
     const DBC *dbc
-    vector[uint32_t] addresses
+    cpp_set[uint32_t] addresses
 
   cdef readonly:
     dict vl
@@ -47,7 +48,7 @@ cdef class CANParser:
 
       address = m.address
       message_v.push_back((address, c[1]))
-      self.addresses.push_back(address)
+      self.addresses.insert(address)
 
       name = m.name.decode("utf8")
       signal_names = [sig.name.decode("utf-8") for sig in (<Msg*>m).sigs]
@@ -80,23 +81,25 @@ cdef class CANParser:
 
     cdef vector[SignalValue] new_vals
     cdef CanFrame* frame
-    cdef CanData* can_data
+    cdef CanData can_data
     cdef vector[CanData] can_data_array
 
     try:
       if len(strings) and not isinstance(strings[0], (list, tuple)):
         strings = [strings]
 
-      can_data_array.reserve(len(strings))
       for s in strings:
-        can_data = &(can_data_array.emplace_back())
         can_data.nanos = s[0]
-        can_data.frames.reserve(len(s[1]))
+        can_data.frames.clear()
         for f in s[1]:
-          frame = &(can_data.frames.emplace_back())
-          frame.address = f[0]
-          frame.dat = f[1]
-          frame.src = f[2]
+          if self.addresses.count(f[0]) > 0:
+            frame = &(can_data.frames.emplace_back())
+            frame.address = f[0]
+            frame.dat = f[1]
+            frame.src = f[2]
+        if can_data.frames.size() > 0:
+          can_data_array.emplace_back(can_data)
+
     except TypeError:
       raise RuntimeError("invalid parameter")
 
