@@ -68,14 +68,12 @@ cdef extern from "common.h":
     vector[vector[double]] all_vals
     uint64_t last_seen_nanos
 
-  cdef struct CanFrame:
-    long src
-    uint32_t address
-    vector[uint8_t] dat
-
   cdef struct CanData:
     uint64_t nanos
-    vector[CanFrame] frames
+    uint32_t src
+    uint32_t address
+    uint8_t dat_length
+    uint8_t[64] dat
 
   cdef cppclass CANParser:
     bool can_valid

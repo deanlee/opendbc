@@ -74,28 +74,9 @@ cdef class CANParser:
     for address in self.addresses:
       self.vl_all[address].clear()
 
-    cdef vector[CanData] can_data_array
+    #updated_addrs = self.can.update(can_data_array)
+    updated_addrs = set()
 
-    try:
-      if len(strings) and not isinstance(strings[0], (list, tuple)):
-        strings = [strings]
-
-      can_data_array.reserve(len(strings))
-      for s in strings:
-        can_data = &(can_data_array.emplace_back())
-        can_data.nanos = s[0]
-        can_data.frames.reserve(len(s[1]))
-        for address, dat, src in s[1]:
-          source_bus = <uint32_t>src
-          if source_bus == self.bus:
-            frame = &(can_data.frames.emplace_back())
-            frame.address = address
-            frame.dat = dat
-            frame.src = source_bus
-    except TypeError:
-      raise RuntimeError("invalid parameter")
-
-    updated_addrs = self.can.update(can_data_array)
     for addr in updated_addrs:
       vl = self.vl[addr]
       vl_all = self.vl_all[addr]

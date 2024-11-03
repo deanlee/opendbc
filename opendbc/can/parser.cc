@@ -165,49 +165,40 @@ std::set<uint32_t> CANParser::update(const std::vector<CanData> &can_data) {
     }
 
     UpdateCans(c, updated_addresses);
+    bus_timeout = (c.nanos - last_nonempty_nanos) > bus_timeout_threshold;
     UpdateValid(c.nanos);
   }
   return updated_addresses;
 }
 
-void CANParser::UpdateCans(const CanData &can, std::set<uint32_t> &updated_addresses) {
+void CANParser::UpdateCans(const CanData &frame, std::set<uint32_t> &updated_addresses) {
   //DEBUG("got %zu messages\n", can.frames.size());
 
-  bool bus_empty = true;
+  if (frame.src != bus) {
+    // DEBUG("skip %d: wrong bus\n", cmsg.getAddress());
+    return;
+  }
 
-  for (const auto &frame : can.frames) {
-    if (frame.src != bus) {
-      // DEBUG("skip %d: wrong bus\n", cmsg.getAddress());
-      continue;
-    }
-    bus_empty = false;
+  auto state_it = message_states.find(frame.address);
+  if (state_it == message_states.end()) {
+    // DEBUG("skip %d: not specified\n", cmsg.getAddress());
+    return;
+  }
 
-    auto state_it = message_states.find(frame.address);
-    if (state_it == message_states.end()) {
-      // DEBUG("skip %d: not specified\n", cmsg.getAddress());
-      continue;
-    }
-    if (frame.dat.size() > 64) {
-      DEBUG("got message longer than 64 bytes: 0x%X %zu\n", frame.address, frame.dat.size());
-      continue;
-    }
-
-    // TODO: this actually triggers for some cars. fix and enable this
-    //if (dat.size() != state_it->second.size) {
-    //  DEBUG("got message with unexpected length: expected %d, got %zu for %d", state_it->second.size, dat.size(), cmsg.getAddress());
-    //  continue;
-    //}
-
-    if (state_it->second.parse(can.nanos, frame.dat)) {
-      updated_addresses.insert(state_it->first);
-    }
+  // TODO: this actually triggers for some cars. fix and enable this
+  //if (dat.size() != state_it->second.size) {
+  //  DEBUG("got message with unexpected length: expected %d, got %zu for %d", state_it->second.size, dat.size(), cmsg.getAddress());
+  //  continue;
+  //}
+  std::vector<uint8_t> dat;
+  dat.assign(frame.dat, frame.dat + frame.dat_length);
+  if (state_it->second.parse(frame.nanos, dat)) {
+    updated_addresses.insert(state_it->first);
   }
 
   // update bus timeout
-  if (!bus_empty) {
-    last_nonempty_nanos = can.nanos;
-  }
-  bus_timeout = (can.nanos - last_nonempty_nanos) > bus_timeout_threshold;
+  last_nonempty_nanos = frame.nanos;
+
 }
 
 void CANParser::UpdateValid(uint64_t nanos) {

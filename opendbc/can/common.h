@@ -29,15 +29,12 @@ unsigned int hkg_can_fd_checksum(uint32_t address, const Signal &sig, const std:
 unsigned int fca_giorgio_checksum(uint32_t address, const Signal &sig, const std::vector<uint8_t> &d);
 unsigned int pedal_checksum(uint32_t address, const Signal &sig, const std::vector<uint8_t> &d);
 
-struct CanFrame {
-  long src;
-  uint32_t address;
-  std::vector<uint8_t> dat;
-};
-
 struct CanData {
   uint64_t nanos;
-  std::vector<CanFrame> frames;
+  uint32_t src;
+  uint32_t address;
+  uint8_t dat_length;
+  uint8_t dat[64];
 };
 
 class MessageState {
