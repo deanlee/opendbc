@@ -76,6 +76,10 @@ cdef class CANParser:
     for address in self.addresses:
       self.vl_all[address].clear()
 
+     # Check if the byte_array is empty
+    if byte_array.size == 0:
+      return set()  # Return an empty set or handle as needed
+
     assert byte_array.flags['C_CONTIGUOUS'], "byte_array must be C-contiguous"
 
     cdef uint8_t[::1] arr_memview = byte_array
