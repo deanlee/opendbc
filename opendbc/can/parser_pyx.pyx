@@ -76,9 +76,9 @@ cdef class CANParser:
     for address in self.addresses:
       self.vl_all[address].clear()
 
-     # Check if the byte_array is empty
-    if byte_array.size == 0:
-      return set()  # Return an empty set or handle as needed
+    # Check if the byte_array is empty
+    #if byte_array.size == 0:
+      #return set()  # Return an empty set or handle as needed
 
     cdef uint8_t[::1] arr_memview = byte_array
     cdef set updated_addrs = self.can.update(&arr_memview[0], byte_array.shape[0])
@@ -101,13 +101,13 @@ cdef class CANParser:
     if len(can_list) and not isinstance(can_list[0], (list, tuple)):
       can_list = [can_list]
 
-    flat_data = np.empty((0,), dtype=np.uint8)  # Initialize an empty 1D numpy array
-    for s in can_list:
+  flat_data = np.empty((0,), dtype=np.uint8)  # Initialize an empty 1D numpy array
+  #  for s in can_list:
       nanos = int(s[0])
       for address, dat, src in s[1]:
         # Create a current entry and fill it directly
-        current_entry = np.empty(sizeof(CanData), dtype=np.uint8)
-        current_entry[0:8] = np.frombuffer(nanos.to_bytes(8, 'little'), dtype=np.uint8)  # nanos (uint64_t)
+      current_entry = np.empty(sizeof(CanData), dtype=np.uint8)
+      #  current_entry[0:8] = np.frombuffer(nanos.to_bytes(8, 'little'), dtype=np.uint8)  # nanos (uint64_t)
         current_entry[8:12] = np.frombuffer(src.to_bytes(4, 'little'), dtype=np.uint8)  # src (uint32_t)
         current_entry[12:16] = np.frombuffer(address.to_bytes(4, 'little'), dtype=np.uint8)  # address (uint32_t)
         current_entry[16] = len(dat)  # len (uint8_t)

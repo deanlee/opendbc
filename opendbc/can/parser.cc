@@ -151,31 +151,28 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
     message_states[state.address] = state;
   }
 }
-#include <iostream>
-std::set<uint32_t> CANParser::update(const uint8_t* data, size_t size) {
+
+std::set<uint32_t> CANParser::update(const uint8_t *data, size_t size) {
   for (auto &state : message_states) {
     for (auto &vals : state.second.all_vals) vals.clear();
   }
 
-    size_t offset = 0;
+  size_t offset = 0;
   std::set<uint32_t> updated_addresses;
   while (offset < size) {
-    struct CanData* canData = (struct CanData*)(data + offset);
+    struct CanData *can_data = (struct CanData *)(data + offset);
     if (first_nanos == 0) {
-      first_nanos = canData->nanos;
+      first_nanos = can_data->nanos;
     }
-    // std::cout << canData->nanos << " " << canData->src << " " << canData->address << " " << (int)(canData->dat_length) << " size" << sizeof(CanData) << std::endl;
-    UpdateCans(*canData, updated_addresses);
-    bus_timeout = (canData->nanos - last_nonempty_nanos) > bus_timeout_threshold;
-    UpdateValid(canData->nanos);
+    UpdateCans(*can_data, updated_addresses);
+    bus_timeout = (can_data->nanos - last_nonempty_nanos) > bus_timeout_threshold;
+    UpdateValid(can_data->nanos);
     offset += sizeof(CanData);
   }
   return updated_addresses;
 }
 
 void CANParser::UpdateCans(const CanData &frame, std::set<uint32_t> &updated_addresses) {
-  //DEBUG("got %zu messages\n", can.frames.size());
-
   if (frame.src != bus) {
     // DEBUG("skip %d: wrong bus\n", cmsg.getAddress());
     return;
