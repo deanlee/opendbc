@@ -1,10 +1,11 @@
 # distutils: language = c++
 # cython: c_string_encoding=ascii, language_level=3
-
+import numpy as np
+cimport numpy as np
 from libcpp.pair cimport pair
 from libcpp.string cimport string
 from libcpp.vector cimport vector
-from libc.stdint cimport uint32_t
+from libc.stdint cimport uint32_t, uint8_t
 
 from .common cimport CANParser as cpp_CANParser
 from .common cimport dbc_lookup, Msg, DBC, CanData
@@ -67,15 +68,18 @@ cdef class CANParser:
     if self.can:
       del self.can
 
-  def update_strings(self, strings, sendcan=False):
+  #def update_strings(self, np.ndarray[uint8_t, ndim=1, mode="c"] byte_array, sendcan=False):
+  def update_strings(self, byte_array, sendcan=False):
     # input format:
     # [nanos, [[address, data, src], ...]]
     # [[nanos, [[address, data, src], ...], ...]]
     for address in self.addresses:
       self.vl_all[address].clear()
 
-    #updated_addrs = self.can.update(can_data_array)
-    updated_addrs = set()
+    assert byte_array.flags['C_CONTIGUOUS'], "byte_array must be C-contiguous"
+
+    cdef uint8_t[::1] arr_memview = byte_array
+    cdef set updated_addrs = self.can.update(&arr_memview[0], byte_array.shape[0])
 
     for addr in updated_addrs:
       vl = self.vl[addr]

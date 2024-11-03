@@ -151,6 +151,24 @@ CANParser::CANParser(int abus, const std::string& dbc_name, bool ignore_checksum
     message_states[state.address] = state;
   }
 }
+std::set<uint32_t> CANParser::update(const uint8_t* data, size_t size) {
+  for (auto &state : message_states) {
+    for (auto &vals : state.second.all_vals) vals.clear();
+  }
+
+  std::set<uint32_t> updated_addresses;
+  struct CanData *canData = (struct CanData *)data;
+  for (size_t i = 0; i < size; i += sizeof(CanData)) {
+    if (first_nanos == 0) {
+      first_nanos = canData->nanos;
+    }
+    UpdateCans(*canData, updated_addresses);
+    bus_timeout = (canData->nanos - last_nonempty_nanos) > bus_timeout_threshold;
+    UpdateValid(canData->nanos);
+    ++canData;
+  }
+  return updated_addresses;
+}
 
 std::set<uint32_t> CANParser::update(const std::vector<CanData> &can_data) {
   // Clear all_values
