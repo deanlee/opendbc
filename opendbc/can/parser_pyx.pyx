@@ -77,7 +77,8 @@ cdef class CANParser:
       self.vl_all[address].clear()
 
     cdef size_t size = byte_array.shape[0]
-    if (size == 0) return {}
+    if size == 0:
+      return set()
 
     cdef uint8_t[::1] arr_memview = byte_array
     cdef set updated_addrs = self.can.update(&arr_memview[0], size)
@@ -103,7 +104,15 @@ cdef class CANParser:
     flat_data = np.empty((0,), dtype=np.uint8)  # Initialize an empty 1D numpy array
     for s in can_list:
       nanos = int(s[0])
-      for address, dat, src in s[1]:
+      can_data_list = s[1]
+
+      num_can_data_entries = len(can_data_list)
+      header = np.empty(12, dtype=np.uint8)
+      header[0:8] = np.frombuffer(nanos.to_bytes(8, 'little'), dtype=np.uint8)  # ts (uint64_t)
+      header[8:12] = np.frombuffer(num_can_data_entries.to_bytes(4, 'little'), dtype=np.uint8)  # size_of_can_data (uint32_t)
+      flat_data = np.concatenate((flat_data, header))
+
+      for address, dat, src in can_data_list:
         current_entry = np.empty(sizeof(CanData), dtype=np.uint8)
         current_entry[0:8] = np.frombuffer(nanos.to_bytes(8, 'little'), dtype=np.uint8)  # nanos (uint64_t)
         current_entry[8:12] = np.frombuffer(src.to_bytes(4, 'little'), dtype=np.uint8)  # src (uint32_t)
