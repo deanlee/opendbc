@@ -189,15 +189,13 @@ void CANParser::UpdateCans(const CanData &frame, std::set<uint32_t> &updated_add
   //  DEBUG("got message with unexpected length: expected %d, got %zu for %d", state_it->second.size, dat.size(), cmsg.getAddress());
   //  continue;
   //}
-  std::vector<uint8_t> dat;
-  dat.assign(frame.dat, frame.dat + frame.dat_length);
+  std::vector<uint8_t> dat(frame.dat, frame.dat + frame.dat_length);
   if (state_it->second.parse(frame.nanos, dat)) {
     updated_addresses.insert(state_it->first);
   }
 
   // update bus timeout
   last_nonempty_nanos = frame.nanos;
-
 }
 
 void CANParser::UpdateValid(uint64_t nanos) {
