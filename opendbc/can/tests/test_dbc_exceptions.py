@@ -21,7 +21,7 @@ class TestCanParserPackerExceptions:
 
     parser = CANParser(dbc_file, msgs, 0)
     with pytest.raises(RuntimeError):
-      parser.update_strings([b''])
+      parser.update_from_list([b''])
 
     # Everything is supposed to work below
     CANParser(dbc_file, msgs, 0)

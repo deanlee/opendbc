@@ -173,25 +173,6 @@ std::set<uint32_t> CANParser::update(const uint8_t* data, size_t size) {
   return updated_addresses;
 }
 
-std::set<uint32_t> CANParser::update(const std::vector<CanData> &can_data) {
-  // Clear all_values
-  for (auto &state : message_states) {
-    for (auto &vals : state.second.all_vals) vals.clear();
-  }
-
-  std::set<uint32_t> updated_addresses;
-  for (const auto &c : can_data) {
-    if (first_nanos == 0) {
-      first_nanos = c.nanos;
-    }
-
-    UpdateCans(c, updated_addresses);
-    bus_timeout = (c.nanos - last_nonempty_nanos) > bus_timeout_threshold;
-    UpdateValid(c.nanos);
-  }
-  return updated_addresses;
-}
-
 void CANParser::UpdateCans(const CanData &frame, std::set<uint32_t> &updated_addresses) {
   //DEBUG("got %zu messages\n", can.frames.size());
 

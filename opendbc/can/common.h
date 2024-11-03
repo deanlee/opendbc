@@ -77,7 +77,6 @@ public:
   CANParser(int abus, const std::string& dbc_name,
             const std::vector<std::pair<uint32_t, int>> &messages);
   CANParser(int abus, const std::string& dbc_name, bool ignore_checksum, bool ignore_counter);
-  std::set<uint32_t> update(const std::vector<CanData> &can_data);
   std::set<uint32_t> update(const uint8_t* data, size_t size);
   MessageState *getMessageState(uint32_t address) { return &message_states.at(address); }
 
