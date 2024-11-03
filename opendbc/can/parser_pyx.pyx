@@ -7,11 +7,53 @@ from libcpp.vector cimport vector
 from libc.stdint cimport uint32_t
 
 from .common cimport CANParser as cpp_CANParser
-from .common cimport dbc_lookup, Msg, DBC, CanData
+from .common cimport dbc_lookup, Msg, DBC, CanData, MessageState
 
 import numbers
 from collections import defaultdict
+#from collections.abc import Mapping
 
+# readonly dict
+cdef class ReadOnlyDict:
+  cdef MessageState *state
+  cdef int value_index
+  cdef list _signal_names
+
+  def __init__(self):
+    pass
+
+  def __iter__(self):
+      # Return an iterator over the keys
+      return iter(self._signal_names)
+
+  def __len__(self):
+      # Return the number of items in the dictionary
+      return len(self._signal_names)
+
+  def __repr__(self):
+      # Return a string representation of the dictionary
+      return f"ReadOnlyDict"
+
+  cdef create(MessageState *state, index):
+    value_dict = ReadOnlyDict()
+    value_dict.state = state
+    value_dict.value_index = index
+    value_dict._signal_names = [sig.name.decode("utf-8") for sig in state.parse_sigs]
+    return value_dict
+
+
+cdef class ValueDict(ReadOnlyDict):
+  def __getitem__(self, key):
+    return self.state.vals[self.index]
+
+cdef class AllValueDict(ReadOnlyDict):
+  def __getitem__(self, key):
+    return self.state.all_vals[self.index]
+
+
+cdef class TimeValueDict(ReadOnlyDict):
+  def __getitem__(self, key):
+    return self.state.last_seen_nanos
 
 cdef class CANParser:
   cdef:
@@ -54,14 +96,18 @@ cdef class CANParser:
       name = m.name.decode("utf8")
       signal_names = [sig.name.decode("utf-8") for sig in (<Msg*>m).sigs]
 
-      self.vl[address] = {name: 0.0 for name in signal_names}
-      self.vl[name] = self.vl[address]
-      self.vl_all[address] = defaultdict(list)
-      self.vl_all[name] = self.vl_all[address]
-      self.ts_nanos[address] = {name: 0.0 for name in signal_names}
-      self.ts_nanos[name] = self.ts_nanos[address]
 
     self.can = new cpp_CANParser(bus, dbc_name, message_v)
+
+    # Populate dictionaries with ValueDict
+    for address, _ in message_v:
+      m = self.dbc.addr_to_msg.at(address)
+      name = m.name.decode("utf8")
+      state = MessageState.create(self.can.messageState(address))
+      ValueDict value
+      value.create(state, 1)
+
+
 
   def __dealloc__(self):
     if self.can:
@@ -95,20 +141,7 @@ cdef class CANParser:
     except TypeError:
       raise RuntimeError("invalid parameter")
 
-    updated_addrs = self.can.update(can_data_array)
-    for addr in updated_addrs:
-      vl = self.vl[addr]
-      vl_all = self.vl_all[addr]
-      ts_nanos = self.ts_nanos[addr]
-
-      state = self.can.getMessageState(addr)
-      for i in range(state.parse_sigs.size()):
-        name = <unicode>state.parse_sigs[i].name
-        vl[name] = state.vals[i]
-        vl_all[name] = state.all_vals[i]
-        ts_nanos[name] = state.last_seen_nanos
-
-    return updated_addrs
+    return self.can.update(can_data_array)
 
   @property
   def can_valid(self):
