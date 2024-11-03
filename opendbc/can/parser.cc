@@ -164,7 +164,7 @@ std::set<uint32_t> CANParser::update(const uint8_t* data, size_t size) {
     if (first_nanos == 0) {
       first_nanos = canData->nanos;
     }
-    std::cout << canData->nanos << " " << canData->src << " " << canData->address << " " << (int)(canData->dat_length) << " size" << sizeof(CanData) << std::endl;
+    // std::cout << canData->nanos << " " << canData->src << " " << canData->address << " " << (int)(canData->dat_length) << " size" << sizeof(CanData) << std::endl;
     UpdateCans(*canData, updated_addresses);
     bus_timeout = (canData->nanos - last_nonempty_nanos) > bus_timeout_threshold;
     UpdateValid(canData->nanos);
